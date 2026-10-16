@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#031636">
+  <title>Eventos | SchoolLink HXV</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner container">
+      <a class="brand" href="index.html" aria-label="SchoolLink HXV - página inicial">
+        <span class="brand-name">SchoolLink <b>HXV</b></span>
+        <span class="brand-subtitle">CEEP Hélio Xavier de Vasconcelos</span>
+      </a>
+
+      <button class="menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false" aria-controls="primary-nav">
+        <span></span><span></span><span></span>
+      </button>
+
+      <nav class="primary-nav" id="primary-nav" aria-label="Navegação principal">
+        <a href="index.html">Início</a>
+        <a href="sobre.html">Sobre</a>
+        <a href="eventos.html" aria-current="page">Eventos</a>
+        <a href="horarios.html">Horários</a>
+        <a href="estudos.html">Área de estudos</a>
+        <a href="enem.html">Guia ENEM</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="topo" class="container page-content">
+    <section class="page-intro">
+      <span class="eyebrow">Portal acadêmico integrado</span>
+      <h1>Eventos escolares</h1>
+      <p>Acompanhe feiras tecnológicas, palestras, oficinas e outras atividades promovidas pelo CEEP Hélio Xavier de Vasconcelos.</p>
+    </section>
+
+    <section class="featured-event card" aria-labelledby="featured-title">
+      <div class="featured-media">
+        <!-- Troque esta imagem pela arte oficial do evento. -->
+        <img src="img/sematec.jpg" alt="Cartaz do evento em destaque" onerror="this.style.display='none'">
+      </div>
+      <div class="featured-content">
+        <span class="tag tag-red">Evento em destaque</span>
+        <h2 id="featured-title">SEMATEC 2026</h2>
+        <p class="lead">Do Código ao Negócio: soluções que saem do CEEP para a comunidade.</p>
+        <p>Use este espaço para apresentar o evento principal, sua proposta e as informações mais importantes.</p>
+        <div class="info-grid">
+          <div class="info-item"><span class="info-label">Período</span><strong>06 a 08 de outubro</strong></div>
+          <div class="info-item"><span class="info-label">Local</span><strong>Auditório do CEEP · Extremoz/RN</strong></div>
+        </div>
+        <div class="button-row">
+          <a class="button button-primary" href="#programacao">Ver programação</a>
+          <a class="button button-secondary" href="contato.html">Mais informações</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-block" id="programacao">
+      <div class="section-heading">
+        <div><span class="eyebrow">Agenda</span><h2>Programação</h2></div>
+        <p>Exemplo de conteúdo organizado em cartões responsivos.</p>
+      </div>
+      <div class="card-grid">
+        <article class="card schedule-card">
+          <span class="tag">06 de outubro</span><h3>Abertura e conexão local</h3>
+          <p>Apresentação dos projetos integradores e abertura oficial do evento.</p>
+          <p class="muted">Local: Auditório do CEEP</p>
+        </article>
+        <article class="card schedule-card">
+          <span class="tag tag-red">07 de outubro</span><h3>Oficinas práticas</h3>
+          <p>Atividades de tecnologia, desenvolvimento web e empreendedorismo.</p>
+          <p class="muted">Local: Laboratórios</p>
+        </article>
+        <article class="card schedule-card">
+          <span class="tag">08 de outubro</span><h3>Feira e encerramento</h3>
+          <p>Exposição de projetos, avaliação e encerramento das atividades.</p>
+          <p class="muted">Local: Pátio central</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section-block">
+      <div class="section-heading"><div><span class="eyebrow">Memória escolar</span><h2>Eventos anteriores</h2></div></div>
+      <div class="card-grid">
+        <article class="card past-event">
+          <div class="placeholder-media" aria-hidden="true">Imagem do evento</div>
+          <div class="card-body"><span class="info-label">Novembro de 2024</span><h3>Mostra de Empreendedorismo</h3><p>Descrição breve do evento anterior e dos projetos apresentados.</p></div>
+        </article>
+        <article class="card past-event">
+          <div class="placeholder-media" aria-hidden="true">Imagem do evento</div>
+          <div class="card-body"><span class="info-label">Agosto de 2024</span><h3>Digital ao Extremo</h3><p>Descrição breve das palestras, oficinas e atividades realizadas.</p></div>
+        </article>
+        <article class="card past-event">
+          <div class="placeholder-media" aria-hidden="true">Imagem do evento</div>
+          <div class="card-body"><span class="info-label">Maio de 2024</span><h3>Hackathon CEEP Cidadão</h3><p>Descrição breve dos protótipos desenvolvidos pelos estudantes.</p></div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <strong>CEEP Hélio Xavier de Vasconcelos</strong>
+      <p>Educação pública profissional · SchoolLink HXV</p>
+      <small>© 2026 SchoolLink HXV</small>
+    </div>
+  </footer>
+
+  <!-- Atalho de navegação mobile: tocar na página atual leva ao topo. -->
+  <nav class="mobile-nav" aria-label="Atalhos de navegação">
+    <a href="index.html" data-page="index.html"><span class="nav-icon">⌂</span><span>Início</span></a>
+    <a href="sobre.html" data-page="sobre.html"><span class="nav-icon">◎</span><span>Sobre</span></a>
+    <a href="eventos.html" data-page="eventos.html" aria-current="page"><span class="nav-icon">▦</span><span>Eventos</span></a>
+    <a href="horarios.html" data-page="horarios.html"><span class="nav-icon">◷</span><span>Horários</span></a>
+    <a href="estudos.html" data-page="estudos.html"><span class="nav-icon">▤</span><span>Estudos</span></a>
+  </nav>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
