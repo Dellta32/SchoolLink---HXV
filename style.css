@@ -1882,7 +1882,6 @@ body.dark-theme .cursos-informacoes h3 {
 .diretorio {
     overflow: hidden;
     bottom: 0vh;
-    position: fixed;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -2853,13 +2852,12 @@ header {
 .portal-mobile-nav { display: none; }
 main { min-height: 65vh; }
 footer.diretorio {
-  margin-top: 60px;
-  padding: 28px 20px 90px;
-  text-align: center;
-  color: #64748b;
-  background: #fff;
-  border-top: 1px solid #e2e8f0;
-  font-size: 13px;
+    margin-top: 85px;
+    text-align: center;
+    color: #64748b;
+    background: #122333;
+    border-top: 1px solid #e2e8f0;
+    font-size: 13px;
 }
 footer.diretorio a { color: var(--portal-red); display: inline-flex; align-items: center; gap: 10px; }
 footer.diretorio img { width: 24px; height: 24px; object-fit: contain; }
