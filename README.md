@@ -1,28 +1,13 @@
-# SchoolLink HXV — estrutura inicial
+# Portal CEEP HXV — Digital ao Extremo
 
-## Arquivos
-- `eventos.html`: exemplo de página com o padrão visual.
-- `css/style.css`: CSS externo compartilhado e responsivo.
-- `js/main.js`: menu mobile e comportamento de voltar ao topo.
-- `img/`: coloque aqui imagens locais, por exemplo `sematec.jpg`.
+Projeto adaptado para uma estrutura visual compartilhada inspirada no padrão do SchoolLink HXV.
 
-## Como abrir
-Abra `eventos.html` no navegador. Para o CSS e o JavaScript funcionarem, mantenha a estrutura de pastas.
+## Alterações
+- Menu hambúrguer removido das páginas.
+- Navegação horizontal compartilhada no cabeçalho.
+- Navegação inferior fixa para telas móveis.
+- `style.css` agora concentra os estilos originais de `style.css` e `RESPONSIVIDADE.css`, além das regras comuns novas.
+- Páginas preservadas: início, sobre, eventos, gestão, horários, cardápio e guia do ENEM.
+- Arquivos de imagem, scripts e conteúdos originais mantidos.
 
-## Como criar uma nova página
-1. Duplique `eventos.html` e renomeie (por exemplo, `horarios.html`).
-2. Mantenha os links para `css/style.css` e `js/main.js`.
-3. Altere o `<title>`, o `aria-current="page"` e o conteúdo dentro de `<main>`.
-4. No menu principal e na navegação mobile, ajuste os links e marque a página atual com `aria-current="page"`.
-5. Para destacar a página atual na navegação mobile, o JavaScript também identifica o arquivo atual automaticamente pelo nome.
-
-## Classes reutilizáveis
-- Layout: `.container`, `.page-content`, `.page-intro`, `.section-block`
-- Cartões: `.card`, `.card-grid`, `.schedule-card`, `.past-event`, `.card-body`
-- Elementos: `.eyebrow`, `.tag`, `.tag-red`, `.button`, `.button-primary`, `.button-secondary`
-- Cabeçalho/rodapé: `.site-header`, `.primary-nav`, `.mobile-nav`, `.site-footer`
-
-## Observações
-- Os dados do SEMATEC no HTML são conteúdo demonstrativo; substitua datas, descrições, links e imagens por informações confirmadas.
-- O caminho `img/sematec.jpg` é apenas um local esperado para sua imagem; crie a pasta e coloque o arquivo.
-- O projeto usa fontes Google Fonts como aprimoramento visual, mas tem fontes alternativas locais no CSS.
+Abra `index.html` no navegador para iniciar.
