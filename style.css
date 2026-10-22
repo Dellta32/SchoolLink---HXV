@@ -868,10 +868,10 @@ body:not(.home-page)>h1,body:not(.home-page) main>h1 {
 
 
 /* GERAL — MOBILE — até 640px */
+@media(max-width:900px)
+ {
 
-body {
-  padding-bottom:78px;
-}
+
 
 .site-header {
   position:sticky;
@@ -1329,7 +1329,7 @@ body {
 .diretorio a {
   font-size:10px;
 }
-
+ }
 
 /* ============================================================
    DIMENSÃO: TELAS MUITO PEQUENAS — até 370px
