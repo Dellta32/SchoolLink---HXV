@@ -1,13 +1,13 @@
-# Portal CEEP HXV — Digital ao Extremo
+# Digital ao Extremo — redesign baseado nos protótipos Stitch
 
-Projeto adaptado para uma estrutura visual compartilhada inspirada no padrão do SchoolLink HXV.
+Projeto estático HTML/CSS/JavaScript. O design compartilhado está consolidado em `style.css`.
 
-## Alterações
-- Menu hambúrguer removido das páginas.
-- Navegação horizontal compartilhada no cabeçalho.
-- Navegação inferior fixa para telas móveis.
-- `style.css` agora concentra os estilos originais de `style.css` e `RESPONSIVIDADE.css`, além das regras comuns novas.
-- Páginas preservadas: início, sobre, eventos, gestão, horários, cardápio e guia do ENEM.
-- Arquivos de imagem, scripts e conteúdos originais mantidos.
+## Como abrir
+Abra `index.html` no navegador. Para melhor funcionamento dos recursos, use um servidor local estático.
 
-Abra `index.html` no navegador para iniciar.
+## Navegação responsiva
+- Desktop: links no cabeçalho.
+- Mobile: barra inferior fixa.
+- Sem menu hambúrguer e sem campo de pesquisa.
+
+As páginas e os conteúdos originais foram preservados e receberam uma camada visual unificada inspirada nos protótipos Stitch de Home, Eventos, Sobre, Gestão, Horários e ENEM.

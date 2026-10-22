@@ -5,28 +5,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cardápio Escolar</title>
-    <script src="JS.js"></script>
     <link rel="stylesheet" href="style.css">
+    
+    <script src="JS.js"></script>
 </head>
 
 <body>
-    <header class="portal-header">
-  <nav id="nav" class="portal-header-inner" aria-label="Navegação principal">
-    <a class="portal-brand" href="index.html" aria-label="Portal CEEP, início">
-      <img src="imagens/logo.png" class="logo" alt="">
-      <span class="logotext">Portal CEEP <b>HXV</b></span>
-    </a>
-    <div class="primary-nav">
-      <a href="index.html">Início</a>
-      <a href="sobre.html">Sobre</a>
-      <a href="eventos.html">Eventos</a>
-      <a href="gestao.html">Gestão</a>
-      <a href="horarios.html">Horários</a>
-      <a href="cardapio.html" aria-current="page">Cardápio</a>
-      <a href="guiaTreineiro.html">ENEM</a>
+    <header class="site-header">
+  <nav class="site-nav" aria-label="Navegação principal">
+    <a class="brand" href="index.html"><img src="imagens/logo.png" alt="Brasão do CEEP"><span><strong>SchoolLink <em>HXV</em></strong><small>CEEP Hélio Xavier de Vasconcelos</small></span></a>
+    <div class="desktop-links">
+      <a href="index.html" data-page="index.html">Início</a><a href="sobre.html" data-page="sobre.html">Sobre</a><a href="eventos.html" data-page="eventos.html">Eventos</a><a href="gestao.html" data-page="gestao.html">Gestão</a><a href="horarios.html" data-page="horarios.html">Horários</a><a href="cardapio.html" data-page="cardapio.html">Cardápio</a><a href="guiaTreineiro.html" data-page="guiaTreineiro.html">ENEM</a>
     </div>
   </nav>
 </header>
+<nav class="mobile-nav" aria-label="Navegação mobile">
+  <a href="index.html" data-page="index.html"><span>⌂</span><small>Início</small></a><a href="sobre.html" data-page="sobre.html"><span>ⓘ</span><small>Sobre</small></a><a href="eventos.html" data-page="eventos.html"><span>▣</span><small>Eventos</small></a><a href="gestao.html" data-page="gestao.html"><span>♙</span><small>Gestão</small></a><a href="horarios.html" data-page="horarios.html"><span>◷</span><small>Horários</small></a>
+</nav>
     <main class="cardapio-main">
         <div class="cardapio-container">
             <h1 class="titulo-cardapio">Horários dos Lanches</h1>
@@ -278,13 +273,6 @@
         <span>Telefone: (84) 3279-2095 / © 2025 Centro Estadual de Educação Profissional Hélio Xavier de Vasconcelos </span>
 
     </footer>
-<nav class="portal-mobile-nav" aria-label="Atalhos de navegação">
-  <a href="index.html"><span aria-hidden="true">⌂</span>Início</a>
-  <a href="eventos.html"><span aria-hidden="true">▦</span>Eventos</a>
-  <a href="horarios.html"><span aria-hidden="true">◷</span>Horários</a>
-  <a href="cardapio.html" aria-current="page"><span aria-hidden="true">☷</span>Cardápio</a>
-  <a href="guiaTreineiro.html"><span aria-hidden="true">✦</span>ENEM</a>
-</nav>
 </body>
 
 </html>

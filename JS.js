@@ -464,3 +464,15 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 });
+
+
+// Marca a página atual na navegação compartilhada (desktop e mobile).
+document.addEventListener("DOMContentLoaded", () => {
+  const current = (location.pathname.split("/").pop() || "index.html").toLowerCase();
+  document.querySelectorAll("[data-page]").forEach(link => {
+    if ((link.getAttribute("data-page") || "").toLowerCase() === current) {
+      link.classList.add("active");
+      link.setAttribute("aria-current", "page");
+    }
+  });
+});
