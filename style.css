@@ -252,6 +252,12 @@ body:not(.home-page) main,body:not(.home-page) .sobre-header,body:not(.home-page
   margin-right:auto;
 }
 
+.sobre-content h3.titulo-curso{
+  margin: auto;
+  font: 900 30px Manrope, sans-serif;
+  color: var(--navy);
+}
+
 .cardapio-container,.fila-container,.enem-content,.sisu-content,.conteudos-container,.redacao-content {
   background:#fff;
   border:1px solid var(--line);
