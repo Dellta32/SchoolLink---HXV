@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#071936">
+  <title>Corpo Docente e Gestão | SchoolLink HXV</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="css/areas-escolares.css">
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="js/firebase-init.js"></script>
+  <script src="js/corpo-docente.js" defer></script>
+</head>
+<body class="corpo-docente-page">
+  <header class="site-header">
+    <nav class="site-nav" aria-label="Navegação principal">
+      <a class="brand" href="index.html" aria-label="SchoolLink HXV - Início">
+        <img src="imagens/logo.png" alt="" onerror="this.style.display='none'">
+        <span><strong>SchoolLink <em>HXV</em></strong><small>Portal educacional</small></span>
+      </a>
+      <div class="desktop-links">
+        <a href="index.html">Início</a>
+        <a href="eventos.html">Eventos</a>
+        <a href="alunos.html">Área do aluno</a>
+        <a href="corpo-docente.html" class="active" aria-current="page">Corpo docente</a>
+      </div>
+      <button class="area-docente__sair" id="btnSairDocente" type="button" hidden>Sair</button>
+    </nav>
+  </header>
+
+  <main class="area-docente">
+    <section class="area-docente__login" id="painelLoginDocente">
+      <div class="area-docente__intro">
+        <span class="area-eyebrow">ÁREA RESTRITA · SCHOOLLINK HXV</span>
+        <h1>Informação escolar organizada, comunicação mais simples.</h1>
+        <p>Espaço de publicação para professores e equipe gestora. Compartilhe materiais, atividades, eventos e comunicados com os destinatários corretos.</p>
+        <div class="area-docente__recursos">
+          <div><strong>01</strong><span>Publique materiais e arquivos</span></div>
+          <div><strong>02</strong><span>Direcione avisos por turma</span></div>
+          <div><strong>03</strong><span>Organize atividades com prazo</span></div>
+        </div>
+      </div>
+      <form class="area-card area-docente__form" id="formLoginDocente">
+        <div class="area-card__icone" aria-hidden="true">⌑</div>
+        <h2>Acesso institucional</h2>
+        <p>Entre com a conta autorizada pela gestão escolar.</p>
+        <label for="emailDocente">E-mail institucional</label>
+        <input id="emailDocente" type="email" name="email" autocomplete="username" required placeholder="voce@escola.edu.br">
+        <label for="senhaDocente">Senha</label>
+        <input id="senhaDocente" type="password" name="senha" autocomplete="current-password" required placeholder="Sua senha">
+        <p class="area-form__erro" id="erroLoginDocente" role="alert" hidden></p>
+        <button class="area-button area-button--primary area-button--full" type="submit">Entrar no painel</button>
+        <small class="area-form__nota">O acesso usa Firebase Authentication. A conta precisa estar cadastrada e autorizada pela gestão escolar.</small>
+      </form>
+    </section>
+
+    <section class="area-docente__app" id="painelDocente" hidden>
+      <div class="area-docente__topo">
+        <div><span class="area-eyebrow">PAINEL DE PUBLICAÇÃO</span><h1>Central de publicações</h1><p>Crie e gerencie conteúdos do SchoolLink HXV.</p></div>
+        <span class="area-status"><span></span> Conexão Firebase</span>
+      </div>
+      <div class="area-tabs" role="tablist" aria-label="Seções do painel docente">
+        <button type="button" class="is-active" data-doc-secao="publicar" role="tab" aria-selected="true">Nova publicação</button>
+        <button type="button" data-doc-secao="gerenciar" role="tab" aria-selected="false">Gerenciar publicações</button>
+      </div>
+
+      <section class="area-secao is-visible" id="doc-secao-publicar" data-doc-painel="publicar">
+        <div class="area-docente__layout">
+          <form class="area-card area-publicacao-form" id="formPublicacao">
+            <div class="area-card__cabecalho"><div><span class="area-eyebrow">EDITOR DE CONTEÚDO</span><h2>Nova publicação</h2></div></div>
+            <label for="tipoPublicacao">Tipo de publicação</label>
+            <select id="tipoPublicacao" required>
+              <option value="Anúncio">Anúncio</option>
+              <option value="Evento">Evento</option>
+              <option value="Comunicado">Comunicado</option>
+              <option value="Conteúdo">Conteúdo</option>
+              <option value="Atividade">Atividade</option>
+            </select>
+            <label for="tituloPublicacao">Título</label>
+            <input id="tituloPublicacao" required maxlength="140" placeholder="Digite um título claro">
+            <label for="descricaoPublicacao">Descrição</label>
+            <textarea id="descricaoPublicacao" required rows="5" maxlength="5000" placeholder="Explique o que os estudantes precisam saber..."></textarea>
+            <div class="area-form-grid">
+              <div><label for="importanciaPublicacao">Importância</label><select id="importanciaPublicacao"><option value="normal">Normal</option><option value="importante">Importante</option><option value="urgente">Urgente</option></select></div>
+              <div><label for="dataPublicacao">Data do evento/prazo</label><input id="dataPublicacao" type="date"></div>
+            </div>
+            <fieldset class="area-fieldset">
+              <legend>Quem poderá visualizar?</legend>
+              <label class="area-check"><input type="radio" name="destinatario" value="todos" checked> Toda a comunidade escolar</label>
+              <label class="area-check"><input type="radio" name="destinatario" value="alunos"> Estudantes</label>
+              <label class="area-check"><input type="radio" name="destinatario" value="turmas"> Turmas específicas</label>
+            </fieldset>
+            <div id="blocoTurmas" class="area-turmas" hidden>
+              <span class="area-label">Selecione as turmas</span>
+              <div class="area-turmas__opcoes">
+                <label class="area-check"><input type="checkbox" value="1A"> 1º A</label>
+                <label class="area-check"><input type="checkbox" value="1B"> 1º B</label>
+                <label class="area-check"><input type="checkbox" value="2A"> 2º A</label>
+                <label class="area-check"><input type="checkbox" value="2B"> 2º B</label>
+                <label class="area-check"><input type="checkbox" value="3A"> 3º A</label>
+                <label class="area-check"><input type="checkbox" value="3B"> 3º B</label>
+              </div>
+              <small class="area-form__nota">Substitua as opções pelas turmas oficiais cadastradas pela escola.</small>
+            </div>
+            <label for="arquivosPublicacao">Anexos (imagem, PDF ou PPTX)</label>
+            <input id="arquivosPublicacao" type="file" accept="image/*,.pdf,.pptx" multiple>
+            <small class="area-form__nota">Protótipo local: arquivos são apenas pré-visualizados no navegador; não são enviados a um servidor.</small>
+            <div id="listaArquivos" class="area-arquivos"></div>
+            <p class="area-form__erro" id="erroPublicacao" role="alert" hidden></p>
+            <div class="area-form__acoes"><button class="area-button area-button--secondary" type="reset">Limpar</button><button class="area-button area-button--primary" type="submit">Publicar</button></div>
+          </form>
+
+          <aside class="area-card area-preview">
+            <div class="area-card__cabecalho"><div><span class="area-eyebrow">PRÉ-VISUALIZAÇÃO</span><h2>Como ficará no portal</h2></div></div>
+            <article class="area-preview__post">
+              <div class="area-preview__meta"><span id="previewTipo" class="area-tag">Anúncio</span><span id="previewImportancia" class="area-tag area-tag--normal">Normal</span></div>
+              <h3 id="previewTitulo">Título da publicação</h3>
+              <p id="previewDescricao">A descrição da publicação aparecerá aqui enquanto você preenche o formulário.</p>
+              <div id="previewData" class="area-preview__data" hidden></div>
+              <div id="previewAnexos" class="area-preview__anexos"></div>
+              <small id="previewDestino">Visível para toda a comunidade escolar</small>
+            </article>
+            <div class="area-preview__dica"><strong>Dica:</strong> use títulos objetivos, informe prazos e confirme o público antes de publicar.</div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="area-secao" id="doc-secao-gerenciar" data-doc-painel="gerenciar">
+        <div class="area-secao__titulo"><div><span class="area-eyebrow">CONTEÚDO PUBLICADO</span><h2>Gerenciar publicações</h2><p>Edite ou arquive publicações armazenadas no Firestore.</p></div></div>
+        <div class="area-filtros"><label for="filtroTipoDocente">Filtrar tipo</label><select id="filtroTipoDocente"><option value="todos">Todos os tipos</option><option>Anúncio</option><option>Evento</option><option>Comunicado</option><option>Conteúdo</option><option>Atividade</option></select></div>
+        <div id="listaPublicacoes" class="area-lista area-card"></div>
+      </section>
+      <p class="area-aluno__aviso">Demonstração front-end: publicações ficam no armazenamento local deste navegador. Para uso real, conecte Firebase Authentication, Firestore, Storage e Security Rules.</p>
+    </section>
+  </main>
+
+  <nav class="mobile-nav" aria-label="Navegação móvel">
+    <a href="index.html"><span aria-hidden="true">⌂</span><small>Início</small></a>
+    <a href="eventos.html"><span aria-hidden="true">▦</span><small>Eventos</small></a>
+    <a href="alunos.html"><span aria-hidden="true">▣</span><small>Aluno</small></a>
+    <a href="corpo-docente.html" class="active" aria-current="page"><span aria-hidden="true">♙</span><small>Docentes</small></a>
+  </nav>
+</body>
+</html>

@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#071936">
+  <title>Área do Aluno | SchoolLink HXV</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="css/areas-escolares.css">
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="js/firebase-init.js"></script>
+  <script src="js/alunos.js" defer></script>
+</head>
+<body class="area-aluno-page">
+  <header class="site-header">
+    <nav class="site-nav" aria-label="Navegação principal">
+      <a class="brand" href="index.html" aria-label="SchoolLink HXV - Início">
+        <img src="imagens/logo.png" alt="" onerror="this.style.display='none'">
+        <span><strong>SchoolLink <em>HXV</em></strong><small>Portal educacional</small></span>
+      </a>
+      <div class="desktop-links">
+        <a href="index.html">Início</a>
+        <a href="eventos.html">Eventos</a>
+        <a href="alunos.html" class="active" aria-current="page">Área do aluno</a>
+        <a href="corpo-docente.html">Corpo docente</a>
+      </div>
+      <button class="area-aluno__sair" id="btnSair" type="button" hidden>Sair</button>
+    </nav>
+  </header>
+
+  <main class="area-aluno">
+    <section class="area-aluno__login" id="painelLogin">
+      <div class="area-aluno__login-copy">
+        <span class="area-eyebrow">SCHOOLLINK HXV · AMBIENTE DO ESTUDANTE</span>
+        <h1>Seu espaço de aprendizagem.</h1>
+        <p>Acesse atividades, materiais, comunicados e compromissos da sua turma em um só lugar.</p>
+        <ul class="area-aluno__beneficios">
+          <li>Materiais organizados por disciplina</li>
+          <li>Atividades e prazos em destaque</li>
+          <li>Comunicados direcionados à sua turma</li>
+        </ul>
+      </div>
+      <form class="area-card area-aluno__form" id="formLoginAluno">
+        <div class="area-card__icone" aria-hidden="true">↗</div>
+        <h2>Entrar na área do aluno</h2>
+        <p>Use a matrícula e o código individual fornecido pela escola.</p>
+        <label for="matriculaAluno">Matrícula</label>
+        <input id="matriculaAluno" name="matricula" autocomplete="username" inputmode="numeric" required maxlength="30" placeholder="Digite sua matrícula">
+        <label for="codigoAluno">Código de acesso</label>
+        <input id="codigoAluno" name="codigo" type="password" autocomplete="current-password" required maxlength="100" placeholder="Código fornecido pela escola">
+        <p class="area-form__erro" id="erroLoginAluno" role="alert" hidden></p>
+        <button class="area-button area-button--primary area-button--full" type="submit">Entrar</button>
+        <small class="area-form__nota">Protótipo visual: a validação demonstrativa usa dados locais. Antes de publicar, conecte a autenticação segura do Firebase.</small>
+      </form>
+    </section>
+
+    <section class="area-aluno__app" id="painelAluno" hidden>
+      <div class="area-aluno__topo">
+        <div>
+          <span class="area-eyebrow">PAINEL DO ESTUDANTE</span>
+          <h1>Olá, <span id="nomeAluno">estudante</span>!</h1>
+          <p id="turmaAluno">Acompanhe as novidades da sua turma.</p>
+        </div>
+        <div class="area-aluno__data"><span>HOJE</span><strong id="dataHoje">—</strong></div>
+      </div>
+
+      <nav class="area-tabs" aria-label="Seções da área do aluno" role="tablist">
+        <button type="button" class="is-active" data-secao="visao-geral" role="tab" aria-selected="true">Visão geral</button>
+        <button type="button" data-secao="tarefas" role="tab" aria-selected="false">Minhas tarefas</button>
+        <button type="button" data-secao="calendario" role="tab" aria-selected="false">Calendário</button>
+        <button type="button" data-secao="conteudos" role="tab" aria-selected="false">Conteúdos</button>
+        <button type="button" data-secao="comunicados" role="tab" aria-selected="false">Comunicados</button>
+      </nav>
+
+      <section class="area-secao is-visible" id="secao-visao-geral" data-painel="visao-geral">
+        <div class="area-stats">
+          <article class="area-stat"><span class="area-stat__icone">✓</span><div><small>Tarefas pendentes</small><strong id="totalPendentes">0</strong></div></article>
+          <article class="area-stat"><span class="area-stat__icone area-stat__icone--vermelho">!</span><div><small>Atividades próximas</small><strong id="totalProximas">0</strong></div></article>
+          <article class="area-stat"><span class="area-stat__icone area-stat__icone--azul">▤</span><div><small>Novos comunicados</small><strong id="totalComunicados">0</strong></div></article>
+        </div>
+        <div class="area-duas-colunas">
+          <section class="area-card">
+            <div class="area-card__cabecalho"><div><span class="area-eyebrow">ACOMPANHAMENTO</span><h2>Próximas atividades</h2></div><button class="area-link-button" data-ir="tarefas" type="button">Ver todas →</button></div>
+            <div class="area-lista" id="listaProximas"></div>
+          </section>
+          <section class="area-card">
+            <div class="area-card__cabecalho"><div><span class="area-eyebrow">MURAL DA TURMA</span><h2>Comunicados recentes</h2></div><button class="area-link-button" data-ir="comunicados" type="button">Ver mural →</button></div>
+            <div class="area-lista" id="listaRecentes"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="area-secao" id="secao-tarefas" data-painel="tarefas">
+        <div class="area-secao__titulo"><div><span class="area-eyebrow">ORGANIZAÇÃO PESSOAL</span><h2>Minhas tarefas</h2><p>Crie lembretes pessoais e acompanhe as atividades escolares.</p></div></div>
+        <form class="area-card area-tarefa-form" id="formNovaTarefa">
+          <label for="tituloTarefa">Nova tarefa ou lembrete</label>
+          <div class="area-tarefa-form__linha"><input id="tituloTarefa" required maxlength="120" placeholder="Ex.: revisar conteúdo de Matemática"><input id="prazoTarefa" type="date" aria-label="Prazo da tarefa"><button class="area-button area-button--primary" type="submit">Adicionar</button></div>
+        </form>
+        <div class="area-card"><div class="area-lista" id="listaTarefas"></div></div>
+      </section>
+
+      <section class="area-secao" id="secao-calendario" data-painel="calendario">
+        <div class="area-secao__titulo"><div><span class="area-eyebrow">DATAS IMPORTANTES</span><h2>Calendário escolar</h2><p>Atividades com prazo e eventos publicados pela escola.</p></div></div>
+        <div class="area-card"><div class="area-lista" id="listaCalendario"></div></div>
+      </section>
+
+      <section class="area-secao" id="secao-conteudos" data-painel="conteudos">
+        <div class="area-secao__titulo"><div><span class="area-eyebrow">MATERIAIS DE ESTUDO</span><h2>Conteúdos por disciplina</h2><p>Consulte os materiais liberados para sua turma.</p></div></div>
+        <div class="area-filtros"><label for="filtroDisciplina">Filtrar disciplina</label><select id="filtroDisciplina"><option value="todas">Todas as disciplinas</option></select></div>
+        <div class="area-conteudos" id="listaConteudos"></div>
+      </section>
+
+      <section class="area-secao" id="secao-comunicados" data-painel="comunicados">
+        <div class="area-secao__titulo"><div><span class="area-eyebrow">MURAL ESCOLAR</span><h2>Comunicados</h2><p>Avisos gerais e informações direcionadas à sua turma.</p></div></div>
+        <div class="area-lista area-card" id="listaComunicados"></div>
+      </section>
+      <p class="area-aluno__aviso">As publicações são carregadas do Firestore. As tarefas pessoais continuam salvas apenas neste navegador. O login por matrícula e código depende de uma Cloud Function segura.</p>
+    </section>
+  </main>
+
+  <nav class="mobile-nav" aria-label="Navegação móvel">
+    <a href="index.html"><span aria-hidden="true">⌂</span><small>Início</small></a>
+    <a href="eventos.html"><span aria-hidden="true">▦</span><small>Eventos</small></a>
+    <a href="alunos.html" class="active" aria-current="page"><span aria-hidden="true">▣</span><small>Aluno</small></a>
+    <a href="corpo-docente.html"><span aria-hidden="true">♙</span><small>Docentes</small></a>
+  </nav>
+</body>
+</html>
