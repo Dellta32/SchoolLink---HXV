@@ -1,0 +1,197 @@
+/* ============================================================
+   SCHOOLLINK HXV — ÁREAS DO ALUNO E DO CORPO DOCENTE
+   Arquivo complementar: pode ser incorporado ao style.css geral.
+   Não substitui os estilos globais existentes.
+   ============================================================ */
+
+/* GERAL — componentes compartilhados pelas duas páginas */
+.area-aluno-page, .corpo-docente-page { --area-border:#e3e8f0; --area-paper:#f5f7fb; --area-ink:#17243b; --area-muted:#667085; }
+.area-aluno-page main, .corpo-docente-page main { color:var(--area-ink); }
+.area-aluno-page [hidden], .corpo-docente-page [hidden] { display:none !important; }
+.area-eyebrow { display:inline-block; color:var(--red,#bd1724); font-size:10px; font-weight:800; letter-spacing:.11em; line-height:1.5; }
+.area-card { min-width:0; background:#fff; border:1px solid var(--area-border); border-radius:17px; padding:22px; box-shadow:0 5px 20px rgba(15,31,57,.045); }
+.area-card h2 { font-size:19px; margin:4px 0 7px; }
+.area-card p { font-size:13px; color:var(--area-muted); }
+.area-card__icone { display:grid; place-items:center; width:42px; height:42px; margin-bottom:17px; border-radius:13px; background:#fff0f1; color:var(--red,#bd1724); font-size:23px; font-weight:800; }
+.area-card__cabecalho { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:18px; }
+.area-card__cabecalho h2 { margin-bottom:0; }
+.area-button { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:42px; border:1px solid transparent; border-radius:10px; padding:10px 15px; cursor:pointer; font-size:12px; font-weight:800; transition:transform .16s, box-shadow .16s; }
+.area-button:hover { transform:translateY(-1px); }
+.area-button--primary { background:var(--red,#bd1724); color:#fff; }
+.area-button--secondary { background:#fff; color:var(--area-ink); border-color:var(--area-border); }
+.area-button--full { width:100%; margin-top:8px; }
+.area-aluno-page input, .area-aluno-page select, .area-aluno-page textarea,
+.corpo-docente-page input, .corpo-docente-page select, .corpo-docente-page textarea {
+  width:100%; min-width:0; border:1px solid #d7deea; border-radius:9px; background:#fff; color:var(--area-ink); padding:11px 12px; font:inherit; font-size:13px; outline:none;
+}
+.area-aluno-page input:focus, .area-aluno-page select:focus, .area-aluno-page textarea:focus,
+.corpo-docente-page input:focus, .corpo-docente-page select:focus, .corpo-docente-page textarea:focus { border-color:var(--red,#bd1724); box-shadow:0 0 0 3px rgba(189,23,36,.09); }
+.area-aluno-page label, .corpo-docente-page label, .area-label { display:block; margin:14px 0 6px; color:#344054; font-size:12px; font-weight:700; }
+.area-form__erro { margin:12px 0; color:#b42318 !important; font-size:12px !important; font-weight:700; }
+.area-form__nota { display:block; margin-top:10px; color:#7a8495; font-size:10px; line-height:1.6; }
+.area-form__acoes { display:flex; justify-content:flex-end; gap:10px; margin-top:20px; }
+.area-tabs { display:flex; gap:6px; overflow-x:auto; margin:24px 0 20px; padding:5px; border:1px solid var(--area-border); border-radius:13px; background:#fff; scrollbar-width:thin; }
+.area-tabs button { flex:0 0 auto; min-height:39px; border:0; border-radius:9px; padding:9px 14px; background:transparent; color:#667085; cursor:pointer; font-size:12px; font-weight:700; }
+.area-tabs button.is-active { background:var(--navy,#071936); color:#fff; }
+.area-secao { display:none; }
+.area-secao.is-visible { display:block; }
+.area-secao__titulo { display:flex; align-items:end; justify-content:space-between; gap:15px; margin:12px 0 18px; }
+.area-secao__titulo h2 { font-size:25px; margin:5px 0; }
+.area-secao__titulo p { color:var(--area-muted); font-size:13px; }
+.area-link-button { border:0; background:transparent; color:var(--red,#bd1724); font-size:12px; font-weight:800; cursor:pointer; white-space:nowrap; }
+.area-lista { display:flex; flex-direction:column; gap:10px; }
+.area-lista:empty::after { content:"Nenhum item para exibir no momento."; display:block; padding:16px; color:var(--area-muted); font-size:12px; text-align:center; }
+.area-lista__item { display:flex; align-items:flex-start; gap:12px; padding:13px 0; border-bottom:1px solid #edf0f5; }
+.area-lista__item:last-child { border-bottom:0; padding-bottom:0; }
+.area-lista__marcador { display:grid; place-items:center; flex:0 0 38px; width:38px; height:38px; border-radius:11px; background:#eef2ff; color:var(--navy,#071936); font-size:16px; font-weight:800; }
+.area-lista__corpo { min-width:0; flex:1; }
+.area-lista__corpo h3 { font-size:13px; margin:1px 0 4px; overflow-wrap:anywhere; }
+.area-lista__corpo p { font-size:12px; color:var(--area-muted); overflow-wrap:anywhere; }
+.area-lista__meta { display:flex; flex-wrap:wrap; gap:6px; margin-top:7px; color:#7b8495; font-size:10px; }
+.area-tag { display:inline-flex; align-items:center; width:max-content; max-width:100%; border-radius:999px; padding:4px 8px; background:#edf2ff; color:#344a78; font-size:9px; font-weight:800; }
+.area-tag--normal { background:#eef2f6; color:#475467; }
+.area-tag--importante { background:#fff4d6; color:#8a5a00; }
+.area-tag--urgente { background:#ffe4e5; color:#b42318; }
+.area-tag--atividade { background:#e4f7ed; color:#067647; }
+.area-check { display:flex !important; align-items:center; gap:8px; margin:9px 0 !important; font-weight:500 !important; }
+.area-check input { width:16px !important; height:16px; flex:0 0 16px; margin:0; accent-color:var(--red,#bd1724); }
+.area-filtros { display:flex; align-items:center; gap:12px; margin:12px 0 16px; }
+.area-filtros label { margin:0; white-space:nowrap; }
+.area-filtros select { max-width:260px; }
+.area-aluno__aviso { margin:20px 0 0; color:#7b8495; font-size:10px; line-height:1.6; }
+.area-empty { padding:18px; color:var(--area-muted); font-size:12px; text-align:center; }
+
+/* BASE / DESKTOP — ÁREA DO ALUNO */
+.area-aluno { width:min(1160px,calc(100% - 48px)); margin:0 auto; padding:36px 0 58px; }
+.area-aluno__login { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(330px,.8fr); align-items:center; gap:50px; min-height:560px; }
+.area-aluno__login-copy h1, .area-docente__intro h1 { max-width:650px; margin:12px 0 16px; color:var(--navy,#071936); font-size:clamp(34px,4.3vw,52px); letter-spacing:-.045em; line-height:1.08; }
+.area-aluno__login-copy>p, .area-docente__intro>p { max-width:560px; color:#5f6b7e; font-size:15px; line-height:1.8; }
+.area-aluno__beneficios { display:grid; gap:12px; margin:26px 0 0; padding:0; list-style:none; }
+.area-aluno__beneficios li { display:flex; align-items:center; gap:10px; color:#344054; font-size:13px; }
+.area-aluno__beneficios li::before { content:"✓"; display:grid; place-items:center; width:22px; height:22px; border-radius:50%; background:#e6f6ed; color:#067647; font-weight:900; }
+.area-aluno__form { padding:28px; }
+.area-aluno__form>p, .area-docente__form>p { margin-bottom:17px; line-height:1.6; }
+.area-aluno__form .area-form__nota, .area-docente__form .area-form__nota { margin-top:14px; }
+.area-aluno__topo, .area-docente__topo { display:flex; justify-content:space-between; align-items:center; gap:20px; }
+.area-aluno__topo h1, .area-docente__topo h1 { margin:6px 0; color:var(--navy,#071936); font-size:clamp(27px,3vw,36px); letter-spacing:-.035em; }
+.area-aluno__topo p, .area-docente__topo p { color:var(--area-muted); font-size:13px; }
+.area-aluno__data { display:flex; flex-direction:column; gap:4px; min-width:130px; padding:14px 17px; border:1px solid var(--area-border); border-radius:13px; background:#fff; }
+.area-aluno__data span { color:var(--area-muted); font-size:9px; font-weight:800; letter-spacing:.1em; }
+.area-aluno__data strong { color:var(--navy,#071936); font-size:15px; }
+.area-stats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; margin-bottom:18px; }
+.area-stat { display:flex; align-items:center; gap:13px; padding:19px; border:1px solid var(--area-border); border-radius:15px; background:#fff; }
+.area-stat__icone { display:grid; place-items:center; width:42px; height:42px; flex:0 0 42px; border-radius:12px; background:#e6f6ed; color:#067647; font-size:20px; font-weight:800; }
+.area-stat__icone--vermelho { background:#ffe9eb; color:var(--red,#bd1724); }
+.area-stat__icone--azul { background:#eaf0ff; color:#244d8e; }
+.area-stat small { display:block; color:var(--area-muted); font-size:11px; }
+.area-stat strong { display:block; margin-top:3px; color:var(--navy,#071936); font-size:25px; line-height:1.2; }
+.area-duas-colunas { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.area-duas-colunas>.area-card { min-width:0; }
+.area-tarefa-form { margin-bottom:14px; }
+.area-tarefa-form__linha { display:grid; grid-template-columns:minmax(0,1fr) 170px auto; align-items:center; gap:10px; }
+.area-tarefa-form label { margin-top:0; }
+.area-tarefa-form__linha input { margin:0; }
+.area-tarefa-form__item { display:flex; align-items:center; gap:10px; }
+.area-tarefa-form__item input { width:17px; height:17px; accent-color:var(--red,#bd1724); }
+.area-tarefa-form__item--feito .area-lista__corpo h3 { color:#98a2b3; text-decoration:line-through; }
+.area-conteudos { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+.area-conteudo { padding:18px; border:1px solid var(--area-border); border-radius:15px; background:#fff; }
+.area-conteudo__topo { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+.area-conteudo__icone { display:grid; place-items:center; width:38px; height:38px; flex:0 0 38px; border-radius:11px; background:#fff0f1; color:var(--red,#bd1724); font-weight:900; }
+.area-conteudo h3 { font-size:14px; margin-bottom:5px; }
+.area-conteudo p { color:var(--area-muted); font-size:12px; line-height:1.6; }
+.area-conteudo__rodape { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:14px; color:var(--area-muted); font-size:10px; }
+
+/* BASE / DESKTOP — CORPO DOCENTE E GESTÃO */
+.area-docente { width:min(1160px,calc(100% - 48px)); margin:0 auto; padding:36px 0 58px; }
+.area-docente__login { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(330px,.8fr); align-items:center; gap:50px; min-height:560px; }
+.area-docente__recursos { display:grid; gap:12px; margin-top:28px; max-width:440px; }
+.area-docente__recursos>div { display:flex; align-items:center; gap:14px; padding:13px 15px; border:1px solid var(--area-border); border-radius:12px; background:#fff; }
+.area-docente__recursos strong { color:var(--red,#bd1724); font-size:14px; }
+.area-docente__recursos span { color:#344054; font-size:12px; font-weight:700; }
+.area-docente__form { padding:28px; }
+.area-docente__sair, .area-aluno__sair { border:1px solid var(--area-border); border-radius:9px; padding:8px 12px; background:#fff; color:var(--area-ink); cursor:pointer; font-size:12px; font-weight:700; }
+.area-docente__layout { display:grid; grid-template-columns:minmax(0,1.25fr) minmax(280px,.75fr); align-items:start; gap:18px; }
+.area-publicacao-form>label:first-of-type { margin-top:0; }
+.area-publicacao-form textarea { resize:vertical; min-height:120px; }
+.area-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.area-fieldset { margin:18px 0 0; padding:13px 15px; border:1px solid var(--area-border); border-radius:12px; }
+.area-fieldset legend { padding:0 6px; color:#344054; font-size:12px; font-weight:800; }
+.area-turmas { margin-top:12px; padding:12px; border-radius:11px; background:#f7f8fb; }
+.area-turmas__opcoes { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:4px 12px; }
+.area-preview { position:sticky; top:100px; }
+.area-preview__post { margin-top:6px; padding:18px; border:1px solid var(--area-border); border-radius:14px; background:#fbfcff; }
+.area-preview__meta { display:flex; flex-wrap:wrap; gap:7px; margin-bottom:14px; }
+.area-preview__post h3 { margin-bottom:8px; color:var(--navy,#071936); font-size:19px; overflow-wrap:anywhere; }
+.area-preview__post p { color:#586579; font-size:13px; line-height:1.7; white-space:pre-wrap; overflow-wrap:anywhere; }
+.area-preview__data { margin-top:12px; color:#475467; font-size:11px; font-weight:700; }
+.area-preview__anexos { display:flex; flex-wrap:wrap; gap:8px; margin:13px 0; }
+.area-preview__arquivo { display:flex; align-items:center; gap:8px; max-width:100%; padding:8px; border:1px solid var(--area-border); border-radius:9px; background:#fff; font-size:10px; overflow-wrap:anywhere; }
+.area-preview__arquivo img { width:42px; height:42px; object-fit:cover; border-radius:6px; }
+.area-preview__post>small { display:block; padding-top:11px; border-top:1px solid var(--area-border); color:#7b8495; font-size:10px; }
+.area-preview__dica { margin-top:14px; padding:13px; border-radius:10px; background:#eef3ff; color:#465777; font-size:11px; line-height:1.6; }
+.area-status { display:inline-flex; align-items:center; gap:7px; padding:8px 11px; border-radius:999px; background:#fff4d6; color:#8a5a00; font-size:10px; font-weight:800; white-space:nowrap; }
+.area-status span { width:7px; height:7px; border-radius:50%; background:#d99a00; }
+.area-publicacao__item-acoes { display:flex; flex-wrap:wrap; gap:7px; margin-top:10px; }
+.area-mini-button { border:1px solid var(--area-border); border-radius:8px; padding:6px 9px; background:#fff; color:#344054; font-size:10px; font-weight:800; cursor:pointer; }
+.area-mini-button--danger { color:#b42318; }
+
+/* TABLET — ajustes gerais e páginas */
+@media (max-width:900px) {
+  .area-aluno, .area-docente { width:calc(100% - 32px); padding-top:26px; }
+  .area-aluno__login, .area-docente__login { grid-template-columns:minmax(0,1fr) minmax(290px,.85fr); gap:24px; min-height:500px; }
+  .area-aluno__login-copy h1, .area-docente__intro h1 { font-size:clamp(30px,4vw,42px); }
+  .area-docente__layout { grid-template-columns:minmax(0,1fr) minmax(250px,.8fr); gap:12px; }
+  .area-card { padding:18px; }
+  .area-stat { padding:14px; }
+}
+
+/* MOBILE — ajustes gerais */
+@media (max-width:640px) {
+  .area-aluno, .area-docente { width:calc(100% - 28px); padding:20px 0 30px; }
+  .area-card { padding:16px; border-radius:14px; }
+  .area-card h2 { font-size:17px; }
+  .area-eyebrow { font-size:9px; }
+  .area-button { min-height:40px; padding:9px 12px; }
+  .area-tabs { margin:18px 0 15px; }
+  .area-tabs button { padding:9px 11px; font-size:11px; }
+  .area-secao__titulo h2 { font-size:22px; }
+  .area-secao__titulo p { font-size:12px; }
+  .area-aluno__login, .area-docente__login { grid-template-columns:1fr; gap:20px; min-height:0; }
+  .area-aluno__login-copy h1, .area-docente__intro h1 { max-width:none; margin:9px 0 11px; font-size:32px; }
+  .area-aluno__login-copy>p, .area-docente__intro>p { font-size:13px; line-height:1.7; }
+  .area-aluno__beneficios { gap:8px; margin-top:17px; }
+  .area-aluno__beneficios li { font-size:12px; }
+  .area-aluno__form, .area-docente__form { padding:20px; }
+  .area-aluno__topo, .area-docente__topo { align-items:flex-start; }
+  .area-aluno__topo h1, .area-docente__topo h1 { font-size:26px; }
+  .area-aluno__data { min-width:92px; padding:10px; }
+  .area-aluno__data strong { font-size:12px; }
+  .area-stats { grid-template-columns:1fr; gap:9px; }
+  .area-stat { padding:12px 14px; }
+  .area-stat strong { font-size:22px; }
+  .area-duas-colunas, .area-conteudos, .area-docente__layout { grid-template-columns:1fr; gap:12px; }
+  .area-tarefa-form__linha { grid-template-columns:1fr; }
+  .area-tarefa-form__linha .area-button { width:100%; }
+  .area-filtros { align-items:flex-start; flex-direction:column; gap:6px; }
+  .area-filtros select { max-width:none; }
+  .area-conteudo { padding:15px; }
+  .area-docente__recursos { gap:8px; margin-top:18px; }
+  .area-docente__recursos>div { padding:10px 12px; }
+  .area-form-grid { grid-template-columns:1fr; gap:0; }
+  .area-turmas__opcoes { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .area-preview { position:static; }
+  .area-status { font-size:9px; padding:7px 8px; }
+  .area-aluno__aviso { font-size:9px; }
+}
+
+/* TELAS MUITO PEQUENAS */
+@media (max-width:370px) {
+  .area-aluno__login-copy h1, .area-docente__intro h1 { font-size:28px; }
+  .area-aluno__topo h1, .area-docente__topo h1 { font-size:23px; }
+  .area-aluno__data { min-width:78px; }
+  .area-aluno__data span { font-size:8px; }
+  .area-tabs button { padding:8px 9px; font-size:10px; }
+  .area-form__acoes { flex-direction:column-reverse; }
+  .area-form__acoes .area-button { width:100%; }
+}
