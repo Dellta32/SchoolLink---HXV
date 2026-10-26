@@ -1,4 +1,4 @@
-# Digital ao Extremo — redesign baseado nos protótipos Stitch
+# SchoolLink HXV — Design baseado nos protótipos Stitch
 
 Projeto estático HTML/CSS/JavaScript. O design compartilhado está consolidado em `style.css`.
 
