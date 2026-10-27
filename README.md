@@ -11,3 +11,8 @@ Abra `index.html` no navegador. Para melhor funcionamento dos recursos, use um s
 - Sem menu hambúrguer e sem campo de pesquisa.
 
 As páginas e os conteúdos originais foram preservados e receberam uma camada visual unificada inspirada nos protótipos Stitch de Home, Eventos, Sobre, Gestão, Horários e ENEM.
+
+console.log("Firebase pronto:", window.schoollinkFirebaseReady);
+console.log("Erro:", window.schoollinkFirebaseError);
+console.log("Firebase carregado:", typeof firebase);
+
