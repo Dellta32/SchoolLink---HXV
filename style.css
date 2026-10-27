@@ -284,10 +284,32 @@ body:not(.home-page) main,body:not(.home-page) .sobre-header,body:not(.home-page
 
 /* Mobile-first adaptations based on the Stitch mobile prototypes */
 @media(max-width:900px) {
-  .site-nav{height:66px;
-  padding:0 18px}.desktop-links{gap:0}.desktop-links a{padding:9px 8px;
-  font-size:11px}.brand{min-width:160px}.brand img{width:40px;
-  height:38px}.brand strong{font-size:14px}.brand small{font-size:9px}.quick-access,.portal-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.page-shell{width:calc(100% - 32px)}.professores-cards{grid-template-columns:1fr}.sobre-header{width:calc(100% - 32px);
+  .site-nav{
+    height:66px;
+    padding:0 18px
+  }
+  
+  .desktop-links{
+    gap:0
+  }
+  
+  .desktop-links a{
+    padding:9px 8px;
+    font-size:11px
+}
+
+  .brand{
+    min-width:160px
+  }
+  
+  .brand img{
+    width:40px;
+    height:38px
+  }
+  .brand strong{
+    font-size:14px
+  }
+  .brand small{font-size:9px}.quick-access,.portal-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.page-shell{width:calc(100% - 32px)}.professores-cards{grid-template-columns:1fr}.sobre-header{width:calc(100% - 32px);
   padding:26px}.sobre-content{width:calc(100% - 32px)}.itemEventos{grid-template-columns:1fr;
   width:calc(100% - 32px)}.div-eventos{width:calc(100% - 32px)}.flexconteiner,.cardapio-main,.enem-main,.professor-container{width:calc(100% - 32px)}.table-cardapio,.flexconteiner table{min-width:700px};
 }
