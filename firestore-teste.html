@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#071936">
+  <title>Teste do Firestore | SchoolLink HXV</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;padding:24px 16px;background:#f3f6fb;color:#17243b;font:16px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+    main{max-width:620px;margin:24px auto;background:#fff;border:1px solid #dce4ef;border-radius:18px;padding:24px;box-shadow:0 12px 35px #10264a12}
+    h1{font-size:1.5rem;margin:0 0 8px}p{color:#53627a}.status{padding:12px 14px;border-radius:10px;background:#eef3f9;margin:16px 0;overflow-wrap:anywhere}
+    .ok{background:#e8f7ee;color:#176b37}.bad{background:#fff0ef;color:#a52b24}
+    button{border:0;border-radius:10px;padding:13px 17px;background:#1455a0;color:white;font-weight:650;font-size:1rem;width:100%;margin-top:10px}
+    button:disabled{opacity:.55}small{color:#64748b}a{color:#1455a0}code{overflow-wrap:anywhere}
+  </style>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="js/firebase-init.js"></script>
+  <script src="js/firestore-test.js" defer></script>
+</head>
+<body>
+<main>
+  <h1>Diagnóstico do Firestore</h1>
+  <p>Teste temporário de gravação e leitura na coleção <code>testes</code>. Não altera suas publicações nem perfis.</p>
+  <div id="authStatus" class="status">Verificando autenticação…</div>
+  <form id="loginForm" hidden>
+    <label for="email">E-mail da conta de teste</label><br>
+    <input id="email" type="email" required autocomplete="username" style="width:100%;padding:12px;margin:6px 0 12px">
+    <label for="password">Senha</label><br>
+    <input id="password" type="password" required autocomplete="current-password" style="width:100%;padding:12px;margin:6px 0 12px">
+    <button type="submit">Entrar com Firebase Authentication</button>
+  </form>
+  <button id="runTest" type="button" disabled>Testar gravação e leitura</button>
+  <div id="result" class="status" role="status" aria-live="polite">Aguardando autenticação.</div>
+  <p><small>O teste grava um documento em <code>testes/{UID}</code> e lê o mesmo documento. Após concluir, você pode excluir a coleção <code>testes</code> no Console do Firebase.</small></p>
+  <p><a href="corpo-docente.html">Voltar ao painel docente</a></p>
+</main>
+</body>
+</html>
