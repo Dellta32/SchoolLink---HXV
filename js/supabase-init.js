@@ -11,10 +11,9 @@
     config &&
     typeof config.url === "string" &&
     config.url.startsWith("https://") &&
-    !config.url.includes("https://rlgdylavuiljbctnvscd.supabase.co/rest/v1/") &&
+    !config.url.includes("/rest/v1/") &&
     typeof config.publishableKey === "string" &&
-    config.publishableKey.length > 20 &&
-    !config.publishableKey.includes("sb_publishable_itHql7RT_VWV_OHn9RjGLw_Jd4KVqDa");
+    config.publishableKey.length > 20;
 
   if (!configured || !sdk || typeof sdk.createClient !== "function") {
     window.schoollinkSupabaseReady = false;
