@@ -28,4 +28,46 @@
   );
   window.schoollinkSupabaseReady = true;
   window.schoollinkSupabaseError = null;
+   
+   // Teste visual da conexão Supabase
+(async () => {
+    const indicador = document.createElement("div");
+
+    indicador.textContent = "Verificando Supabase...";
+    indicador.style.cssText = `
+        position: fixed;
+        bottom: 15px;
+        left: 15px;
+        z-index: 99999;
+        padding: 12px 16px;
+        border-radius: 10px;
+        background: #333;
+        color: white;
+        font: 14px Arial;
+    `;
+
+    document.body.appendChild(indicador);
+
+    try {
+        const resposta = await fetch(
+            window.SCHOOLLINK_SUPABASE_CONFIG.url + "/auth/v1/health",
+            {
+                headers: {
+                    apikey: window.SCHOOLLINK_SUPABASE_CONFIG.publishableKey
+                }
+            }
+        );
+
+        if (resposta.ok) {
+            indicador.textContent = "Supabase: conexão OK";
+            indicador.style.background = "#167a45";
+        } else {
+            indicador.textContent = "Supabase: resposta " + resposta.status;
+            indicador.style.background = "#a34b20";
+        }
+    } catch (erro) {
+        indicador.textContent = "Supabase: falha na conexão";
+        indicador.style.background = "#a52a2a";
+    }
+})();
 })();
