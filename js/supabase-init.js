@@ -46,7 +46,15 @@
         font: 14px Arial;
     `;
 
-    document.body.appendChild(indicador);
+const adicionarIndicador = () => {
+  document.body.appendChild(indicador);
+};
+
+if (document.body) {
+  adicionarIndicador();
+} else {
+  document.addEventListener("DOMContentLoaded", adicionarIndicador);
+}
 
     try {
         const resposta = await fetch(
