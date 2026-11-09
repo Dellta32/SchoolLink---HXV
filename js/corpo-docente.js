@@ -20,8 +20,111 @@
   async function refreshPosts(){const snap=await window.schoollinkDb.collection('publicacoes').orderBy('criadoEm','desc').get();posts=snap.docs.map(d=>({id:d.id,...d.data()}));renderPosts();}
   function enter(user){$('#painelLoginDocente').hidden=true;$('#painelDocente').hidden=false;$('#btnSairDocente').hidden=false;const status=$('.area-status');if(status)status.innerHTML='<span></span> Conectado ao Firebase';refreshPosts().catch(e=>err('#erroPublicacao','Não foi possível carregar as publicações: '+e.message));}
   function exit(){window.schoollinkAuth.signOut();$('#painelLoginDocente').hidden=false;$('#painelDocente').hidden=true;$('#btnSairDocente').hidden=true;}
-  async function savePost(){const tipo=$('#tipoPublicacao').value,destino=getDest(),turmas=getTurmas(),descricao=$('#descricaoPublicacao').value.trim(),titulo=$('#tituloPublicacao').value.trim();if(!titulo)throw Error('Informe um título.');if(!descricao)throw Error('Preencha a descrição.');if(destino==='turmas'&&!turmas.length)throw Error('Selecione pelo menos uma turma.');const old=editingId?posts.find(p=>p.id===editingId):null;const anexos=[...(old?.arquivos||[])];for(const item of files){const path=`publicacoes/${Date.now()}_${crypto.randomUUID()}_${item.name.replace(/[^\w.-]/g,'_')}`;const ref=window.schoollinkStorage.ref().child(path);await ref.put(item.file);anexos.push({nome:item.name,tipo:item.type,tamanho:item.size,caminho:path,url:await ref.getDownloadURL()});}const post={tipo,titulo,descricao,importancia:$('#importanciaPublicacao').value,data:$('#dataPublicacao').value||'',destino,turmas:destino==='turmas'?turmas:[],disciplina:tipo==='Conteúdo'?(prompt('Disciplina do conteúdo (ex.: Informática):',old?.disciplina||'Informática')||'Geral'):'Geral',arquivos:anexos,status:'ativo',criadoEm:old?.criadoEm||firebase.firestore.FieldValue.serverTimestamp(),atualizadoEm:firebase.firestore.FieldValue.serverTimestamp(),autorUid:window.schoollinkAuth.currentUser.uid,autorEmail:window.schoollinkAuth.currentUser.email||''};if(editingId)await window.schoollinkDb.collection('publicacoes').doc(editingId).update(post);else await window.schoollinkDb.collection('publicacoes').add(post);editingId=null;}
-  function resetForm(){ $('#formPublicacao').reset();$('#tipoPublicacao').value='Anúncio';$('#importanciaPublicacao').value='normal';$('#blocoTurmas').hidden=true;$('#listaArquivos').innerHTML='';$('#previewAnexos').innerHTML='';clearErr('#erroPublicacao');editingId=null;cleanup();updatePreview(); }
+  
+async function savePost() {
+  const tipo = $('#tipoPublicacao').value;
+  const destino = getDest();
+  const turmas = getTurmas();
+  const descricao = $('#descricaoPublicacao').value.trim();
+  const titulo = $('#tituloPublicacao').value.trim();
+
+  if (!titulo) throw Error('Informe um título.');
+  if (!descricao) throw Error('Preencha a descrição.');
+  if (destino === 'turmas' && !turmas.length) {
+    throw Error('Selecione pelo menos uma turma.');
+  }
+
+  const user = window.schoollinkAuth.currentUser;
+  if (!user) throw Error('Você precisa estar conectado.');
+
+  const old = editingId
+    ? posts.find(p => p.id === editingId)
+    : null;
+
+  const anexos = [...(old?.arquivos || [])];
+
+  // Verificar configuração do Supabase
+  const config = window.SCHOOLLINK_SUPABASE_CONFIG;
+
+  if (files.length && (
+    !window.schoollinkSupabaseReady ||
+    !config?.url ||
+    !config?.publishableKey
+  )) {
+    throw Error('Supabase não está configurado corretamente.');
+  }
+
+  // Enviar cada arquivo pela Edge Function
+  for (const item of files) {
+    const token = await user.getIdToken();
+
+    const formData = new FormData();
+    formData.append('file', item.file);
+
+    const response = await fetch(
+      `${config.url}/functions/v1/schoollink-arquivo`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'apikey': config.publishableKey
+        },
+        body: formData
+      }
+    );
+
+    const result = await response.json().catch(() => ({}));
+
+    if (!response.ok || !result.success) {
+      throw Error(result.error || `Falha ao enviar ${item.name}.`);
+    }
+
+    anexos.push({
+      nome: result.nome,
+      tipo: result.tipo,
+      tamanho: result.tamanho,
+      caminho: result.caminho,
+      url: result.url
+    });
+  }
+
+  const post = {
+    tipo,
+    titulo,
+    descricao,
+    importancia: $('#importanciaPublicacao').value,
+    data: $('#dataPublicacao').value || '',
+    destino,
+    turmas: destino === 'turmas' ? turmas : [],
+    disciplina: tipo === 'Conteúdo'
+      ? (prompt(
+          'Disciplina do conteúdo (ex.: Informática):',
+          old?.disciplina || 'Informática'
+        ) || 'Geral')
+      : 'Geral',
+    arquivos: anexos,
+    status: 'ativo',
+    criadoEm: old?.criadoEm ||
+      firebase.firestore.FieldValue.serverTimestamp(),
+    atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+    autorUid: user.uid,
+    autorEmail: user.email || ''
+  };
+
+  if (editingId) {
+    await window.schoollinkDb
+      .collection('publicacoes')
+      .doc(editingId)
+      .update(post);
+  } else {
+    await window.schoollinkDb
+      .collection('publicacoes')
+      .add(post);
+  }
+
+  editingId = null;
+}
+function resetForm(){ $('#formPublicacao').reset();$('#tipoPublicacao').value='Anúncio';$('#importanciaPublicacao').value='normal';$('#blocoTurmas').hidden=true;$('#listaArquivos').innerHTML='';$('#previewAnexos').innerHTML='';clearErr('#erroPublicacao');editingId=null;cleanup();updatePreview(); }
   $('#formLoginDocente').addEventListener('submit',async e=>{e.preventDefault();clearErr('#erroLoginDocente');if(!ready()){err('#erroLoginDocente',window.schoollinkFirebaseError||'Firebase não inicializado. Confira firebase-config.js e sua conexão.');return;}try{await window.schoollinkAuth.signInWithEmailAndPassword($('#emailDocente').value.trim(),$('#senhaDocente').value);}catch(ex){err('#erroLoginDocente',ex.code==='auth/invalid-credential'?'E-mail ou senha inválidos.':ex.message||'Não foi possível entrar.');}});
   $('#btnSairDocente').addEventListener('click',exit);$$('[data-doc-secao]').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.docSecao)));
   ['tipoPublicacao','tituloPublicacao','descricaoPublicacao','importanciaPublicacao','dataPublicacao'].forEach(id=>$('#'+id).addEventListener('input',updatePreview));$$('input[name="destinatario"]').forEach(x=>x.addEventListener('change',updateDest));$$('#blocoTurmas input').forEach(x=>x.addEventListener('change',updateDest));$('#arquivosPublicacao').addEventListener('change',showFiles);$('#formPublicacao').addEventListener('reset',()=>setTimeout(resetForm,0));
