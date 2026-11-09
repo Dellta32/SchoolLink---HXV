@@ -62,7 +62,7 @@ async function savePost() {
     formData.append('file', item.file);
 
     const response = await fetch(
-      `${config.url}/functions/v1/schoollink-arquivo`,
+      `${config.url}/functions/v1/super-action`,
       {
         method: 'POST',
         headers: {
