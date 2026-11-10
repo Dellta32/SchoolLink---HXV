@@ -200,6 +200,16 @@ header.site-header {
   font-weight: 700;
 }
 
+.area-button--secondary-button {
+  color: var(--navy-2);
+  display: inline-flex;
+  background: var(--white);
+  padding: 11px 16px;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .site-footer {
   background: var(--navy);
   color: white;
