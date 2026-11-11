@@ -38,31 +38,170 @@
   </header>
 
   <main class="area-aluno">
-    <section class="area-aluno__login" id="painelLogin">
-      <div class="area-aluno__login-copy">
-        <span class="area-eyebrow">SCHOOLLINK HXV · AMBIENTE DO ESTUDANTE</span>
-        <h1>Seu espaço de aprendizagem.</h1>
-        <p>Acesse atividades, materiais, comunicados e compromissos da sua turma em um só lugar.</p>
-        <ul class="area-aluno__beneficios">
-          <li>Materiais organizados por disciplina</li>
-          <li>Atividades e prazos em destaque</li>
-          <li>Comunicados direcionados à sua turma</li>
-        </ul>
-      </div>
-      <form class="area-card area-aluno__form" id="formLoginAluno">
-        <div class="area-card__icone" aria-hidden="true">↗</div>
-        <h2>Entrar na área do aluno</h2>
-        <p>Use a matrícula e o código individual fornecido pela escola.</p>
-        <label for="matriculaAluno">Matrícula</label>
-        <input id="matriculaAluno" name="matricula" autocomplete="username" inputmode="numeric" required maxlength="50" placeholder="Digite sua matrícula">
-        <label for="codigoAluno">Código de acesso</label>
-        <input id="codigoAluno" name="codigo" type="password" autocomplete="current-password" required maxlength="100" placeholder="Código fornecido pela escola">
-        <p class="area-form__erro" id="erroLoginAluno" role="alert" hidden></p>
-        <button class="area-button area-button--primary area-button--full" type="submit">Entrar</button>
-        <button class="area-button area-button--secondary area-button--full" type="submit">criar conta</button>
-        <small class="area-form__nota">Protótipo visual: a validação demonstrativa usa dados locais. Antes de publicar, conecte a autenticação segura do Firebase.</small>
-      </form>
-    </section>
+  
+<section class="area-aluno__login" id="painelLogin">
+
+  <div class="area-aluno__login-copy">
+    <span class="area-eyebrow">SCHOOLLINK HXV · AMBIENTE DO ESTUDANTE</span>
+
+    <h1>Seu espaço de aprendizagem.</h1>
+
+    <p>
+      Acesse atividades, materiais, comunicados e compromissos
+      da sua turma em um só lugar.
+    </p>
+
+    <ul class="area-aluno__beneficios">
+      <li>Materiais organizados por disciplina</li>
+      <li>Atividades e prazos em destaque</li>
+      <li>Comunicados direcionados à sua turma</li>
+    </ul>
+  </div>
+
+  <!-- LOGIN -->
+  <form class="area-card area-aluno__form" id="formLoginAluno">
+
+    <div class="area-card__icone" aria-hidden="true">↗</div>
+
+    <h2>Entrar na área do aluno</h2>
+    <p>Utilize seu e-mail institucional para acessar o portal.</p>
+
+    <label for="emailAluno">E-mail institucional</label>
+    <input
+      id="emailAluno"
+      name="email"
+      type="email"
+      autocomplete="username"
+      required
+      maxlength="120"
+      placeholder="seuemail@estudante.rn.gov.br"
+    >
+
+    <label for="senhaAluno">Senha</label>
+    <input
+      id="senhaAluno"
+      name="senha"
+      type="password"
+      autocomplete="current-password"
+      required
+      placeholder="Digite sua senha"
+    >
+
+    <p class="area-form__erro" id="erroLoginAluno" role="alert" hidden></p>
+
+    <button
+      class="area-button area-button--primary area-button--full"
+      type="submit"
+    >
+      Entrar
+    </button>
+
+    <p class="area-form__nota">
+      Ainda não possui uma conta?
+      <button
+        type="button"
+        class="area-link-button"
+        id="abrirCadastroAluno"
+      >
+        Criar conta
+      </button>
+    </p>
+
+  </form>
+
+  <!-- CADASTRO -->
+  <form
+    class="area-card area-aluno__form"
+    id="formCadastroAluno"
+    hidden
+  >
+
+    <div class="area-card__icone" aria-hidden="true">+</div>
+
+    <h2>Criar conta de estudante</h2>
+
+    <p>
+      Cadastre-se utilizando seu e-mail institucional.
+    </p>
+
+    <label for="nomeCadastroAluno">Nome completo</label>
+    <input
+      id="nomeCadastroAluno"
+      name="nome"
+      type="text"
+      autocomplete="name"
+      required
+      maxlength="120"
+      placeholder="Digite seu nome completo"
+    >
+
+    <label for="turmaCadastroAluno">Turma</label>
+    <input
+      id="turmaCadastroAluno"
+      name="turma"
+      type="text"
+      required
+      maxlength="30"
+      placeholder="Ex.: 3º A"
+    >
+
+    <label for="emailCadastroAluno">E-mail institucional</label>
+    <input
+      id="emailCadastroAluno"
+      name="email"
+      type="email"
+      autocomplete="email"
+      required
+      maxlength="120"
+      placeholder="seuemail@estudante.rn.gov.br"
+    >
+
+    <label for="senhaCadastroAluno">Criar senha</label>
+    <input
+      id="senhaCadastroAluno"
+      name="senha"
+      type="password"
+      autocomplete="new-password"
+      minlength="8"
+      required
+      placeholder="Mínimo de 8 caracteres"
+    >
+
+    <label for="confirmarSenhaAluno">Confirmar senha</label>
+    <input
+      id="confirmarSenhaAluno"
+      name="confirmarSenha"
+      type="password"
+      autocomplete="new-password"
+      minlength="8"
+      required
+      placeholder="Digite a senha novamente"
+    >
+
+    <p class="area-form__erro" id="erroCadastroAluno" role="alert" hidden></p>
+
+    <button
+      class="area-button area-button--primary area-button--full"
+      type="submit"
+    >
+      Criar minha conta
+    </button>
+
+    <p class="area-form__nota">
+      Já possui uma conta?
+      <button
+        type="button"
+        class="area-link-button"
+        id="voltarLoginAluno"
+      >
+        Voltar para o login
+      </button>
+    </p>
+
+  </form>
+
+</section>
+
 
     <section class="area-aluno__app" id="painelAluno" hidden>
       <div class="area-aluno__topo">
