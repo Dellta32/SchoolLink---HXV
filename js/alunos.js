@@ -33,6 +33,7 @@
   function read(key, fallback) {
     try {
       const value = localStorage.getItem(key);
+
       return value ? JSON.parse(value) : fallback;
     } catch {
       return fallback;
@@ -178,29 +179,25 @@
   /*
    * Carrega somente as publicações que podem ser
    * consultadas pelo estudante.
-   *
-   * Importante: não buscar todas as publicações
-   * para depois filtrar no JavaScript.
    */
   async function loadPosts() {
+    console.log("[SchoolLink] Iniciando loadPosts.");
+
     const publicacoes = window.schoollinkDb
       .collection("publicacoes");
 
     const consultas = [
-      // Publicações destinadas a todos
       publicacoes
         .where("status", "==", "ativo")
         .where("destino", "==", "todos")
         .get(),
 
-      // Publicações destinadas aos alunos
       publicacoes
         .where("status", "==", "ativo")
         .where("destino", "==", "alunos")
         .get()
     ];
 
-    // Publicações destinadas à turma do estudante
     if (currentStudent?.turma) {
       consultas.push(
         publicacoes
@@ -217,7 +214,6 @@
 
     const resultados = await Promise.all(consultas);
 
-    // Evita documentos duplicados
     const unicas = new Map();
 
     resultados.forEach(snap => {
@@ -234,6 +230,11 @@
 
     posts = [...unicas.values()]
       .sort((a, b) => b.criado - a.criado);
+
+    console.log(
+      "[SchoolLink] Publicações carregadas:",
+      posts.length
+    );
   }
 
   function postIcon(type) {
@@ -631,7 +632,7 @@
         $("#formCadastroAluno").reset();
 
       } catch (error) {
-        console.error("Erro no cadastro:", error);
+        console.error("[SchoolLink] Erro no cadastro:", error);
 
         showError(
           "erroCadastroAluno",
@@ -707,10 +708,18 @@
           return;
         }
 
+        console.log("[SchoolLink] Consultando perfil do aluno...");
+
         const profile = await window.schoollinkDb
           .collection("perfis")
           .doc(user.uid)
           .get();
+
+        console.log(
+          "[SchoolLink] Perfil:",
+          profile.exists,
+          profile.exists ? profile.data() : null
+        );
 
         if (
           !profile.exists ||
@@ -729,12 +738,18 @@
           turma: data.turma || ""
         };
 
+        console.log("[SchoolLink] Iniciando carregamento das publicações...");
+
         await loadPosts();
 
         enter(currentStudent);
 
       } catch (error) {
-        console.error("Erro no login:", error);
+        console.error("[SchoolLink] Erro no login:", {
+          codigo: error.code,
+          mensagem: error.message,
+          erro: error
+        });
 
         showError(
           "erroLoginAluno",
@@ -757,26 +772,39 @@
 
       if (!user) return;
 
+      console.log("[SchoolLink] Sessão detectada:", user.uid);
+
       try {
         if (!user.emailVerified) {
+          console.log("[SchoolLink] E-mail ainda não verificado.");
           await window.schoollinkAuth.signOut();
           return;
         }
 
         if (!validInstitutionalEmail(user.email || "")) {
+          console.log("[SchoolLink] E-mail fora do domínio institucional.");
           await window.schoollinkAuth.signOut();
           return;
         }
+
+        console.log("[SchoolLink] Consultando perfil da sessão...");
 
         const profile = await window.schoollinkDb
           .collection("perfis")
           .doc(user.uid)
           .get();
 
+        console.log(
+          "[SchoolLink] Resultado do perfil:",
+          profile.exists,
+          profile.exists ? profile.data() : null
+        );
+
         if (
           !profile.exists ||
           profile.data().papel !== "aluno"
         ) {
+          console.log("[SchoolLink] Perfil inexistente ou não é aluno.");
           await window.schoollinkAuth.signOut();
           return;
         }
@@ -789,22 +817,27 @@
           turma: data.turma || ""
         };
 
+        console.log("[SchoolLink] Iniciando consulta das publicações...");
+
         await loadPosts();
+
+        console.log("[SchoolLink] Entrando na área do aluno.");
 
         enter(currentStudent);
 
       } catch (error) {
-        console.error(
-          "Falha ao recuperar sessão ou publicações:",
-          error
-        );
+        console.error("[SchoolLink] ERRO NA RECUPERAÇÃO:", {
+          codigo: error.code,
+          mensagem: error.message,
+          erro: error
+        });
 
         $("#painelAluno").hidden = true;
         $("#painelLogin").hidden = false;
 
         showError(
           "erroLoginAluno",
-          "Não foi possível carregar sua área de estudante. Tente novamente."
+          `${error.code || "Erro"}: ${error.message}`
         );
       }
     }
