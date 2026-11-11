@@ -180,23 +180,107 @@
    * Carrega somente as publicações que podem ser
    * consultadas pelo estudante.
    */
-  async function loadPosts() {
-    console.log("[SchoolLink] Iniciando loadPosts.");
+  
+async function loadPosts() {
+  console.log("[SchoolLink] Iniciando loadPosts.");
 
-    const publicacoes = window.schoollinkDb
-      .collection("publicacoes");
+  const publicacoes = window.schoollinkDb
+    .collection("publicacoes");
 
-    const consultas = [
-      publicacoes
+  const consultas = [
+    {
+      nome: "Publicações para todos",
+      consulta: publicacoes
         .where("status", "==", "ativo")
         .where("destino", "==", "todos")
-        .get(),
-
-      publicacoes
+    },
+    {
+      nome: "Publicações para alunos",
+      consulta: publicacoes
         .where("status", "==", "ativo")
         .where("destino", "==", "alunos")
-        .get()
-    ];
+    }
+  ];
+
+  if (currentStudent?.turma) {
+    consultas.push({
+      nome: "Publicações da turma",
+      consulta: publicacoes
+        .where("status", "==", "ativo")
+        .where("destino", "==", "turmas")
+        .where(
+          "turmas",
+          "array-contains",
+          currentStudent.turma
+        )
+    });
+  }
+
+  // Atualiza o token para garantir que as
+  // informações de verificação estejam atualizadas.
+  const user = window.schoollinkAuth.currentUser;
+
+  if (user) {
+    await user.getIdToken(true);
+
+    const token = await user.getIdTokenResult();
+
+    console.log(
+      "[SchoolLink] E-mail verificado no token:",
+      token.claims.email_verified
+    );
+  }
+
+  const unicas = new Map();
+
+  for (const item of consultas) {
+    try {
+      console.log(
+        "[SchoolLink] Testando consulta:",
+        item.nome
+      );
+
+      const snap = await item.consulta.get();
+
+      console.log(
+        "[SchoolLink] Consulta autorizada:",
+        item.nome,
+        "Documentos:",
+        snap.size
+      );
+
+      snap.docs.forEach(doc => {
+        const data = doc.data();
+
+        unicas.set(doc.id, {
+          id: doc.id,
+          ...data,
+          criado: data.criadoEm?.toMillis?.() || 0
+        });
+      });
+
+    } catch (error) {
+      console.error(
+        "[SchoolLink] Consulta bloqueada:",
+        item.nome,
+        {
+          codigo: error.code,
+          mensagem: error.message
+        }
+      );
+
+      throw error;
+    }
+  }
+
+  posts = [...unicas.values()]
+    .sort((a, b) => b.criado - a.criado);
+
+  console.log(
+    "[SchoolLink] Publicações carregadas:",
+    posts.length
+  );
+}
 
     if (currentStudent?.turma) {
       consultas.push(
