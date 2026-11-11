@@ -311,14 +311,6 @@ async function loadPosts() {
         });
       });
     });
-
-    posts = [...unicas.values()]
-      .sort((a, b) => b.criado - a.criado);
-
-    console.log(
-      "[SchoolLink] Publicações carregadas:",
-      posts.length
-    );
   }
 
   function postIcon(type) {
