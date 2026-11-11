@@ -49,6 +49,57 @@
   function loadTasks(uid) {
     tasks = read(TASKS_PREFIX + uid, []);
   }
+  
+async function loadPosts() {
+  const publicacoes = window.schoollinkDb
+    .collection("publicacoes");
+
+  const consultas = [
+    // Publicações destinadas a todos
+    publicacoes
+      .where("status", "==", "ativo")
+      .where("destino", "==", "todos")
+      .get(),
+
+    // Publicações destinadas aos alunos
+    publicacoes
+      .where("status", "==", "ativo")
+      .where("destino", "==", "alunos")
+      .get()
+  ];
+
+  // Publicações destinadas à turma do estudante
+  if (currentStudent?.turma) {
+    consultas.push(
+      publicacoes
+        .where("status", "==", "ativo")
+        .where("destino", "==", "turmas")
+        .where("turmas", "array-contains", currentStudent.turma)
+        .get()
+    );
+  }
+
+  const resultados = await Promise.all(consultas);
+
+  // Evita documentos duplicados
+  const unicas = new Map();
+
+  resultados.forEach(snap => {
+    snap.docs.forEach(doc => {
+      const data = doc.data();
+
+      unicas.set(doc.id, {
+        id: doc.id,
+        ...data,
+        criado: data.criadoEm?.toMillis?.() || 0
+      });
+    });
+  });
+
+  posts = [...unicas.values()]
+    .sort((a, b) => b.criado - a.criado);
+}
+
 
   function fmtDate(value) {
     if (!value) return "Sem data";
