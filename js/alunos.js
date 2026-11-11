@@ -273,7 +273,7 @@ async function loadPosts() {
     }
   }
 
-  posts = [...unicas.values()]
+    posts = [...unicas.values()]
     .sort((a, b) => b.criado - a.criado);
 
   console.log(
@@ -281,37 +281,6 @@ async function loadPosts() {
     posts.length
   );
 }
-
-    if (currentStudent?.turma) {
-      consultas.push(
-        publicacoes
-          .where("status", "==", "ativo")
-          .where("destino", "==", "turmas")
-          .where(
-            "turmas",
-            "array-contains",
-            currentStudent.turma
-          )
-          .get()
-      );
-    }
-
-    const resultados = await Promise.all(consultas);
-
-    const unicas = new Map();
-
-    resultados.forEach(snap => {
-      snap.docs.forEach(doc => {
-        const data = doc.data();
-
-        unicas.set(doc.id, {
-          id: doc.id,
-          ...data,
-          criado: data.criadoEm?.toMillis?.() || 0
-        });
-      });
-    });
-  }
 
   function postIcon(type) {
     return ({
