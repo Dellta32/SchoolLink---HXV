@@ -11,5 +11,4 @@
   window.schoollinkFirebaseReady = true;
   window.schoollinkAuth = firebase.auth();
   window.schoollinkDb = firebase.firestore();
-  window.schoollinkStorage = firebase.storage();
 })();
