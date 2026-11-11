@@ -1,139 +1,782 @@
+
 /* SchoolLink HXV — Área do aluno
- * Demonstração front-end. Não substitui autenticação nem regras de segurança do Firebase.
+ * Firebase Authentication + Firestore
+ * Tarefas pessoais: localStorage por UID.
  */
 (() => {
   "use strict";
+
   const $ = (s, root = document) => root.querySelector(s);
   const $$ = (s, root = document) => [...root.querySelectorAll(s)];
-  const AUTH_ENDPOINT = window.SCHOOLLINK_STUDENT_LOGIN_ENDPOINT || "";
-  const TASKS = "schoollink_tarefas_demo";
+
+  const EMAIL_DOMAIN = "@estudante.rn.gov.br";
+  const TASKS_PREFIX = "schoollink_tarefas_";
 
   let posts = [];
   let currentStudent = null;
-  function futureDate(days) { const d = new Date(); d.setDate(d.getDate()+days); return d.toISOString().slice(0,10); }
-  function read(key, fallback) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch { return fallback; } }
-  function write(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
-  function escapeHtml(value="") { return String(value).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
-  function fmtDate(value) { if (!value) return "Sem data"; const d = new Date(value+"T12:00:00"); return d.toLocaleDateString("pt-BR",{day:"2-digit",month:"short",year:"numeric"}); }
-  function student() { return currentStudent; }
-  let tasks = read(TASKS, []);
+  let tasks = [];
   let activeSection = "visao-geral";
+  let suppressAuthObserver = false;
+
+  function escapeHtml(value = "") {
+    return String(value).replace(/[&<>"']/g, c => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    }[c]));
+  }
+
+  function read(key, fallback) {
+    try {
+      const value = localStorage.getItem(key);
+      return value ? JSON.parse(value) : fallback;
+    } catch {
+      return fallback;
+    }
+  }
+
+  function writeTasks() {
+    if (!currentStudent?.uid) return;
+
+    localStorage.setItem(
+      TASKS_PREFIX + currentStudent.uid,
+      JSON.stringify(tasks)
+    );
+  }
+
+  function loadTasks(uid) {
+    tasks = read(TASKS_PREFIX + uid, []);
+  }
+
+  function fmtDate(value) {
+    if (!value) return "Sem data";
+
+    const d = new Date(value + "T12:00:00");
+
+    return d.toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric"
+    });
+  }
+
+  function validInstitutionalEmail(email) {
+    return email.toLowerCase().endsWith(EMAIL_DOMAIN);
+  }
+
+  function showError(id, message) {
+    const element = $("#" + id);
+    element.textContent = message;
+    element.hidden = false;
+  }
+
+  function clearError(id) {
+    const element = $("#" + id);
+    element.textContent = "";
+    element.hidden = true;
+  }
+
+  function firebaseError(error) {
+    const messages = {
+      "auth/email-already-in-use":
+        "Este e-mail já possui uma conta.",
+
+      "auth/invalid-email":
+        "O endereço de e-mail é inválido.",
+
+      "auth/weak-password":
+        "A senha é muito fraca. Utilize pelo menos 8 caracteres.",
+
+      "auth/user-not-found":
+        "Não encontramos uma conta com esse e-mail.",
+
+      "auth/wrong-password":
+        "E-mail ou senha incorretos.",
+
+      "auth/invalid-credential":
+        "E-mail ou senha incorretos.",
+
+      "auth/too-many-requests":
+        "Muitas tentativas. Aguarde um pouco e tente novamente.",
+
+      "auth/network-request-failed":
+        "Falha na conexão. Verifique sua internet.",
+
+      "auth/operation-not-allowed":
+        "O login por e-mail e senha não está ativado no Firebase."
+    };
+
+    return messages[error.code] ||
+      error.message ||
+      "Ocorreu um erro. Tente novamente.";
+  }
+
+  function showLogin() {
+    $("#formLoginAluno").hidden = false;
+    $("#formCadastroAluno").hidden = true;
+
+    clearError("erroLoginAluno");
+    clearError("erroCadastroAluno");
+  }
+
+  function showRegister() {
+    $("#formLoginAluno").hidden = true;
+    $("#formCadastroAluno").hidden = false;
+
+    clearError("erroLoginAluno");
+    clearError("erroCadastroAluno");
+  }
+
+  function firebaseReady() {
+    return Boolean(
+      window.schoollinkFirebaseReady &&
+      window.schoollinkAuth &&
+      window.schoollinkDb
+    );
+  }
 
   function allowedForStudent(post, current) {
-    if (post.destino === "todos" || post.destino === "alunos") return true;
-    return Array.isArray(post.turmas) && post.turmas.includes(current?.turma);
+    if (
+      post.destino === "todos" ||
+      post.destino === "alunos"
+    ) return true;
+
+    return Array.isArray(post.turmas) &&
+      post.turmas.includes(current?.turma);
   }
+
   function isPostVisible(post, current) {
-    return post.status !== "arquivado" && allowedForStudent(post,current);
+    return post.status !== "arquivado" &&
+      allowedForStudent(post, current);
   }
-  function postIcon(type) { return ({Atividade:"✓",Conteúdo:"▤",Comunicado:"!",Evento:"▦",Anúncio:"•"})[type] || "•"; }
+
+  function visiblePosts() {
+    return posts.filter(p => isPostVisible(p, currentStudent));
+  }
+
+  function postIcon(type) {
+    return ({
+      Atividade: "✓",
+      Conteúdo: "▤",
+      Comunicado: "!",
+      Evento: "▦",
+      Anúncio: "•"
+    })[type] || "•";
+  }
+
   function postCard(post) {
-    const due = post.data ? `<span>Prazo/data: ${escapeHtml(fmtDate(post.data))}</span>` : "";
-    return `<article class="area-lista__item"><span class="area-lista__marcador">${postIcon(post.tipo)}</span><div class="area-lista__corpo"><h3>${escapeHtml(post.titulo)}</h3><p>${escapeHtml(post.descricao)}</p><div class="area-lista__meta"><span class="area-tag ${post.tipo==="Atividade"?"area-tag--atividade":""}">${escapeHtml(post.tipo)}</span><span>${escapeHtml(post.disciplina || "Geral")}</span>${due}</div></div></article>`;
+    const due = post.data
+      ? `<span>Prazo/data: ${escapeHtml(fmtDate(post.data))}</span>`
+      : "";
+
+    return `
+      <article class="area-lista__item">
+        <span class="area-lista__marcador">
+          ${postIcon(post.tipo)}
+        </span>
+
+        <div class="area-lista__corpo">
+          <h3>${escapeHtml(post.titulo)}</h3>
+
+          <p>${escapeHtml(post.descricao)}</p>
+
+          <div class="area-lista__meta">
+            <span class="area-tag ${
+              post.tipo === "Atividade"
+                ? "area-tag--atividade"
+                : ""
+            }">${escapeHtml(post.tipo)}</span>
+
+            <span>${escapeHtml(post.disciplina || "Geral")}</span>
+
+            ${due}
+          </div>
+        </div>
+      </article>
+    `;
   }
-  function visiblePosts() { const current = student(); return posts.filter(p => isPostVisible(p,current)); }
+
   function renderHome() {
     const visible = visiblePosts();
-    const activities = visible.filter(p => p.tipo === "Atividade").sort((a,b) => (a.data||"9999").localeCompare(b.data||"9999"));
-    const notices = visible.filter(p => ["Comunicado","Anúncio","Evento"].includes(p.tipo)).sort((a,b) => b.criado-a.criado);
-    $("#totalPendentes").textContent = tasks.filter(t=>!t.done).length + activities.length;
-    $("#totalProximas").textContent = activities.filter(p=>!p.data || p.data >= new Date().toISOString().slice(0,10)).length;
+
+    const activities = visible
+      .filter(p => p.tipo === "Atividade")
+      .sort((a, b) =>
+        (a.data || "9999").localeCompare(b.data || "9999")
+      );
+
+    const notices = visible
+      .filter(p =>
+        ["Comunicado", "Anúncio", "Evento"].includes(p.tipo)
+      )
+      .sort((a, b) => b.criado - a.criado);
+
+    $("#totalPendentes").textContent =
+      tasks.filter(t => !t.done).length + activities.length;
+
+    $("#totalProximas").textContent =
+      activities.filter(p =>
+        !p.data || p.data >= new Date().toISOString().slice(0, 10)
+      ).length;
+
     $("#totalComunicados").textContent = notices.length;
-    $("#listaProximas").innerHTML = activities.slice(0,4).map(postCard).join("") || `<p class="area-empty">Nenhuma atividade cadastrada.</p>`;
-    $("#listaRecentes").innerHTML = notices.slice(0,4).map(postCard).join("") || `<p class="area-empty">Nenhum comunicado cadastrado.</p>`;
+
+    $("#listaProximas").innerHTML =
+      activities.slice(0, 4).map(postCard).join("") ||
+      `<p class="area-empty">Nenhuma atividade cadastrada.</p>`;
+
+    $("#listaRecentes").innerHTML =
+      notices.slice(0, 4).map(postCard).join("") ||
+      `<p class="area-empty">Nenhum comunicado cadastrado.</p>`;
   }
+
   function renderTasks() {
-    const personal = tasks.map(t => `<div class="area-lista__item area-tarefa-form__item ${t.done?"area-tarefa-form__item--feito":""}"><input type="checkbox" data-task="${escapeHtml(t.id)}" ${t.done?"checked":""} aria-label="Concluir ${escapeHtml(t.title)}"><div class="area-lista__corpo"><h3>${escapeHtml(t.title)}</h3><p>${t.due ? "Prazo: "+escapeHtml(fmtDate(t.due)) : "Lembrete pessoal"} </p></div><button class="area-mini-button area-mini-button--danger" data-remove-task="${escapeHtml(t.id)}" type="button">Excluir</button></div>`).join("");
-    const school = visiblePosts().filter(p=>p.tipo==="Atividade").map(postCard).join("");
-    $("#listaTarefas").innerHTML = personal + school || `<p class="area-empty">Você ainda não tem tarefas. Adicione um lembrete acima.</p>`;
+    const personal = tasks.map(t => `
+      <div class="area-lista__item area-tarefa-form__item ${
+        t.done ? "area-tarefa-form__item--feito" : ""
+      }">
+
+        <input
+          type="checkbox"
+          data-task="${escapeHtml(t.id)}"
+          ${t.done ? "checked" : ""}
+          aria-label="Concluir ${escapeHtml(t.title)}"
+        >
+
+        <div class="area-lista__corpo">
+          <h3>${escapeHtml(t.title)}</h3>
+          <p>${
+            t.due
+              ? "Prazo: " + escapeHtml(fmtDate(t.due))
+              : "Lembrete pessoal"
+          }</p>
+        </div>
+
+        <button
+          class="area-mini-button area-mini-button--danger"
+          data-remove-task="${escapeHtml(t.id)}"
+          type="button"
+        >Excluir</button>
+
+      </div>
+    `).join("");
+
+    const school = visiblePosts()
+      .filter(p => p.tipo === "Atividade")
+      .map(postCard)
+      .join("");
+
+    $("#listaTarefas").innerHTML =
+      personal + school ||
+      `<p class="area-empty">
+        Você ainda não tem tarefas. Adicione um lembrete acima.
+      </p>`;
   }
+
   function renderCalendar() {
-    const items = visiblePosts().filter(p=>p.data).sort((a,b)=>a.data.localeCompare(b.data));
-    $("#listaCalendario").innerHTML = items.map(postCard).join("") || `<p class="area-empty">Nenhuma data publicada.</p>`;
+    const items = visiblePosts()
+      .filter(p => p.data)
+      .sort((a, b) => a.data.localeCompare(b.data));
+
+    $("#listaCalendario").innerHTML =
+      items.map(postCard).join("") ||
+      `<p class="area-empty">Nenhuma data publicada.</p>`;
   }
+
   function renderContents() {
-    const items = visiblePosts().filter(p=>p.tipo==="Conteúdo");
-    const disciplines = [...new Set(items.map(p=>p.disciplina||"Geral"))].sort();
+    const items = visiblePosts()
+      .filter(p => p.tipo === "Conteúdo");
+
+    const disciplines = [
+      ...new Set(items.map(p => p.disciplina || "Geral"))
+    ].sort();
+
     const select = $("#filtroDisciplina");
     const previous = select.value;
-    select.innerHTML = `<option value="todas">Todas as disciplinas</option>` + disciplines.map(d=>`<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join("");
-    if (disciplines.includes(previous)) select.value = previous;
+
+    select.innerHTML =
+      `<option value="todas">Todas as disciplinas</option>` +
+      disciplines.map(d => `
+        <option value="${escapeHtml(d)}">${escapeHtml(d)}</option>
+      `).join("");
+
+    if (disciplines.includes(previous)) {
+      select.value = previous;
+    }
+
     const chosen = select.value;
-    const filtered = items.filter(p=>chosen==="todas" || (p.disciplina||"Geral")===chosen);
-    $("#listaConteudos").innerHTML = filtered.map(p=>`<article class="area-conteudo"><div class="area-conteudo__topo"><span class="area-conteudo__icone">▤</span><div><h3>${escapeHtml(p.titulo)}</h3><p>${escapeHtml(p.disciplina||"Geral")}</p></div></div><p>${escapeHtml(p.descricao)}</p><div class="area-conteudo__rodape"><span>Publicado no SchoolLink</span><span class="area-tag">Material</span></div></article>`).join("") || `<p class="area-empty">Não há conteúdos para esse filtro.</p>`;
+
+    const filtered = items.filter(p =>
+      chosen === "todas" ||
+      (p.disciplina || "Geral") === chosen
+    );
+
+    $("#listaConteudos").innerHTML =
+      filtered.map(p => `
+        <article class="area-conteudo">
+
+          <div class="area-conteudo__topo">
+            <span class="area-conteudo__icone">▤</span>
+
+            <div>
+              <h3>${escapeHtml(p.titulo)}</h3>
+              <p>${escapeHtml(p.disciplina || "Geral")}</p>
+            </div>
+          </div>
+
+          <p>${escapeHtml(p.descricao)}</p>
+
+          <div class="area-conteudo__rodape">
+            <span>Publicado no SchoolLink</span>
+            <span class="area-tag">Material</span>
+          </div>
+
+        </article>
+      `).join("") ||
+      `<p class="area-empty">Não há conteúdos para esse filtro.</p>`;
   }
+
   function renderNotices() {
-    $("#listaComunicados").innerHTML = visiblePosts().filter(p=>["Comunicado","Anúncio","Evento"].includes(p.tipo)).sort((a,b)=>b.criado-a.criado).map(postCard).join("") || `<p class="area-empty">Nenhum comunicado publicado.</p>`;
+    $("#listaComunicados").innerHTML =
+      visiblePosts()
+        .filter(p =>
+          ["Comunicado", "Anúncio", "Evento"].includes(p.tipo)
+        )
+        .sort((a, b) => b.criado - a.criado)
+        .map(postCard)
+        .join("") ||
+      `<p class="area-empty">Nenhum comunicado publicado.</p>`;
   }
-  function renderAll() { renderHome(); renderTasks(); renderCalendar(); renderContents(); renderNotices(); }
+
+  function renderAll() {
+    renderHome();
+    renderTasks();
+    renderCalendar();
+    renderContents();
+    renderNotices();
+  }
+
   function showSection(name) {
     activeSection = name;
-    $$("[data-painel]").forEach(el=>el.classList.toggle("is-visible",el.dataset.painel===name));
-    $$("[data-secao]").forEach(btn=>{const active=btn.dataset.secao===name;btn.classList.toggle("is-active",active);btn.setAttribute("aria-selected",String(active));});
-    if (name==="conteudos") renderContents();
+
+    $$("[data-painel]").forEach(el => {
+      el.classList.toggle(
+        "is-visible",
+        el.dataset.painel === name
+      );
+    });
+
+    $$("[data-secao]").forEach(btn => {
+      const active = btn.dataset.secao === name;
+
+      btn.classList.toggle("is-active", active);
+      btn.setAttribute("aria-selected", String(active));
+    });
+
+    if (name === "conteudos") renderContents();
   }
+
+  async function loadPosts() {
+    const snap = await window.schoollinkDb
+      .collection("publicacoes")
+      .where("status", "==", "ativo")
+      .get();
+
+    posts = snap.docs
+      .map(d => ({
+        id: d.id,
+        ...d.data(),
+        criado: d.data().criadoEm?.toMillis?.() || 0
+      }))
+      .sort((a, b) => b.criado - a.criado);
+  }
+
   function enter(current) {
+    currentStudent = current;
+
+    loadTasks(current.uid);
+
     $("#painelLogin").hidden = true;
     $("#painelAluno").hidden = false;
     $("#btnSair").hidden = false;
+
     $("#nomeAluno").textContent = current.nome || "estudante";
-    $("#turmaAluno").textContent = `${current.turma ? "Turma "+current.turma : "Área do estudante"} · materiais e comunicados da escola`;
-    $("#dataHoje").textContent = new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"short"});
+
+    $("#turmaAluno").textContent =
+      `${current.turma
+        ? "Turma " + current.turma
+        : "Área do estudante"
+      } · materiais e comunicados da escola`;
+
+    $("#dataHoje").textContent =
+      new Date().toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "short"
+      });
+
+    showSection("visao-geral");
     renderAll();
   }
-  function exit() {
+
+  async function exit() {
     currentStudent = null;
-    if (window.schoollinkAuth) window.schoollinkAuth.signOut().catch(()=>{});
-    $("#painelLogin").hidden = false; $("#painelAluno").hidden = true; $("#btnSair").hidden = true;
+    tasks = [];
+    posts = [];
+
+    $("#painelLogin").hidden = false;
+    $("#painelAluno").hidden = true;
+    $("#btnSair").hidden = true;
+
+    showLogin();
+
+    try {
+      await window.schoollinkAuth.signOut();
+    } catch (error) {
+      console.error("Erro ao sair:", error);
+    }
   }
+
+  // ABRIR E FECHAR CADASTRO
+
+  $("#abrirCadastroAluno").addEventListener("click", showRegister);
+  $("#voltarLoginAluno").addEventListener("click", showLogin);
+
+  // CADASTRO DE ESTUDANTE
+
+  $("#formCadastroAluno").addEventListener("submit", async e => {
+    e.preventDefault();
+
+    clearError("erroCadastroAluno");
+
+    if (!firebaseReady()) {
+      showError(
+        "erroCadastroAluno",
+        window.schoollinkFirebaseError ||
+          "O Firebase não está configurado corretamente."
+      );
+      return;
+    }
+
+    const nome = $("#nomeCadastroAluno").value.trim();
+    const turma = $("#turmaCadastroAluno").value.trim();
+    const email = $("#emailCadastroAluno").value.trim().toLowerCase();
+    const senha = $("#senhaCadastroAluno").value;
+    const confirmacao = $("#confirmarSenhaAluno").value;
+
+    if (!validInstitutionalEmail(email)) {
+      showError(
+        "erroCadastroAluno",
+        "Utilize seu e-mail institucional terminado em @estudante.rn.gov.br."
+      );
+      return;
+    }
+
+    if (senha.length < 8) {
+      showError(
+        "erroCadastroAluno",
+        "A senha precisa ter pelo menos 8 caracteres."
+      );
+      return;
+    }
+
+    if (senha !== confirmacao) {
+      showError(
+        "erroCadastroAluno",
+        "As senhas não coincidem."
+      );
+      return;
+    }
+
+    const button = e.submitter;
+    button.disabled = true;
+    button.textContent = "Criando conta...";
+
+    suppressAuthObserver = true;
+
+    try {
+      const credential = await window.schoollinkAuth
+        .createUserWithEmailAndPassword(email, senha);
+
+      const user = credential.user;
+
+      await user.updateProfile({
+        displayName: nome
+      });
+
+      await window.schoollinkDb
+        .collection("perfis")
+        .doc(user.uid)
+        .set({
+          uid: user.uid,
+          nome,
+          turma,
+          email,
+          papel: "aluno",
+          criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+      await user.sendEmailVerification();
+
+      await window.schoollinkAuth.signOut();
+
+      showLogin();
+
+      $("#emailAluno").value = email;
+      $("#senhaAluno").value = "";
+
+      showError(
+        "erroLoginAluno",
+        "Conta criada! Enviamos um link de verificação para seu e-mail institucional. Confirme o endereço antes de entrar."
+      );
+
+      $("#formCadastroAluno").reset();
+
+    } catch (error) {
+      console.error("Erro no cadastro:", error);
+
+      showError(
+        "erroCadastroAluno",
+        firebaseError(error)
+      );
+
+      // Se a conta foi criada, mas alguma etapa posterior falhou,
+      // não deixamos uma sessão parcialmente autenticada aberta.
+      if (window.schoollinkAuth.currentUser) {
+        await window.schoollinkAuth.signOut().catch(() => {});
+      }
+
+    } finally {
+      suppressAuthObserver = false;
+      button.disabled = false;
+      button.textContent = "Criar minha conta";
+    }
+  });
+
+  // LOGIN DO ESTUDANTE
 
   $("#formLoginAluno").addEventListener("submit", async e => {
     e.preventDefault();
-    const matricula = $("#matriculaAluno").value.trim();
-    const codigo = $("#codigoAluno").value.trim();
-    const err = $("#erroLoginAluno"); err.hidden = true;
-    if (!window.schoollinkFirebaseReady) { err.textContent = window.schoollinkFirebaseError || "Configure o Firebase antes de entrar."; err.hidden = false; return; }
-    if (!AUTH_ENDPOINT) { err.textContent = "A autenticação por matrícula e código precisa do endpoint seguro (Cloud Function) definido em SCHOOLLINK_STUDENT_LOGIN_ENDPOINT. Nenhuma credencial é salva neste navegador."; err.hidden = false; return; }
+
+    clearError("erroLoginAluno");
+
+    if (!firebaseReady()) {
+      showError(
+        "erroLoginAluno",
+        window.schoollinkFirebaseError ||
+          "Configure o Firebase antes de entrar."
+      );
+      return;
+    }
+
+    const email = $("#emailAluno").value.trim().toLowerCase();
+    const senha = $("#senhaAluno").value;
+
+    if (!validInstitutionalEmail(email)) {
+      showError(
+        "erroLoginAluno",
+        "Utilize seu e-mail institucional @estudante.rn.gov.br."
+      );
+      return;
+    }
+
+    const button = e.submitter;
+    button.disabled = true;
+    button.textContent = "Entrando...";
+
+    suppressAuthObserver = true;
+
     try {
-      const response = await fetch(AUTH_ENDPOINT, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ matricula, codigo }) });
-      const result = await response.json();
-      if (!response.ok || !result.customToken || !result.nome || !result.turma) throw new Error(result.message || "Matrícula ou código inválido.");
-      const credential = await window.schoollinkAuth.signInWithCustomToken(result.customToken);
-      currentStudent = { nome: result.nome, turma: result.turma, uid: credential.user.uid };
-      await loadPosts(); enter(currentStudent);
-    } catch (ex) { err.textContent = ex.message || "Não foi possível autenticar. Tente novamente."; err.hidden = false; }
-  });
-  async function loadPosts() {
-    const snap = await window.schoollinkDb.collection("publicacoes").where("status", "==", "ativo").get();
-    posts = snap.docs.map(d => ({ id: d.id, ...d.data(), criado: d.data().criadoEm?.toMillis?.() || 0 })).sort((a,b)=>b.criado-a.criado);
-  }
-  window.schoollinkAuth?.onAuthStateChanged(async user => {
-    if (!user) return;
-    try {
-      const doc = await window.schoollinkDb.collection("perfis").doc(user.uid).get();
-      if (doc.exists && doc.data().papel === "aluno") {
-        currentStudent = { uid: user.uid, nome: doc.data().nome || "Estudante", turma: doc.data().turma || "" };
-        await loadPosts(); enter(currentStudent);
+      const credential = await window.schoollinkAuth
+        .signInWithEmailAndPassword(email, senha);
+
+      const user = credential.user;
+
+      if (!user.emailVerified) {
+        await user.sendEmailVerification();
+        await window.schoollinkAuth.signOut();
+
+        showError(
+          "erroLoginAluno",
+          "Seu e-mail ainda não foi verificado. Enviamos um novo link de confirmação. Verifique sua caixa de entrada."
+        );
+
+        return;
       }
-    } catch (ex) { console.error("Falha ao carregar perfil/publicações", ex); }
+
+      const profile = await window.schoollinkDb
+        .collection("perfis")
+        .doc(user.uid)
+        .get();
+
+      if (!profile.exists || profile.data().papel !== "aluno") {
+        throw new Error(
+          "Perfil de estudante não encontrado. Entre em contato com a gestão."
+        );
+      }
+
+      const data = profile.data();
+
+      currentStudent = {
+        uid: user.uid,
+        nome: data.nome || user.displayName || "Estudante",
+        turma: data.turma || ""
+      };
+
+      await loadPosts();
+
+      enter(currentStudent);
+
+    } catch (error) {
+      console.error("Erro no login:", error);
+
+      showError(
+        "erroLoginAluno",
+        firebaseError(error)
+      );
+
+    } finally {
+      suppressAuthObserver = false;
+      button.disabled = false;
+      button.textContent = "Entrar";
+    }
   });
+
+  // RECUPERAÇÃO DE SESSÃO
+
+  window.schoollinkAuth?.onAuthStateChanged(async user => {
+    if (suppressAuthObserver) return;
+
+    if (!user) {
+      return;
+    }
+
+    try {
+      if (!user.emailVerified) {
+        await window.schoollinkAuth.signOut();
+        return;
+      }
+
+      if (!validInstitutionalEmail(user.email || "")) {
+        await window.schoollinkAuth.signOut();
+        return;
+      }
+
+      const profile = await window.schoollinkDb
+        .collection("perfis")
+        .doc(user.uid)
+        .get();
+
+      if (!profile.exists || profile.data().papel !== "aluno") {
+        await window.schoollinkAuth.signOut();
+        return;
+      }
+
+      const data = profile.data();
+
+      currentStudent = {
+        uid: user.uid,
+        nome: data.nome || user.displayName || "Estudante",
+        turma: data.turma || ""
+      };
+
+      await loadPosts();
+      enter(currentStudent);
+
+    } catch (error) {
+      console.error(
+        "Falha ao recuperar sessão ou publicações:",
+        error
+      );
+
+      $("#painelAluno").hidden = true;
+      $("#painelLogin").hidden = false;
+
+      showError(
+        "erroLoginAluno",
+        "Não foi possível carregar sua área de estudante. Tente novamente."
+      );
+    }
+  });
+
+  // SAIR
+
   $("#btnSair").addEventListener("click", exit);
-  $$("[data-secao]").forEach(btn=>btn.addEventListener("click",()=>showSection(btn.dataset.secao)));
-  $$("[data-ir]").forEach(btn=>btn.addEventListener("click",()=>showSection(btn.dataset.ir)));
-  $("#formNovaTarefa").addEventListener("submit",e=>{
+
+  // NAVEGAÇÃO DO PAINEL
+
+  $$("[data-secao]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      showSection(btn.dataset.secao);
+    });
+  });
+
+  $$("[data-ir]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      showSection(btn.dataset.ir);
+    });
+  });
+
+  // TAREFAS PESSOAIS
+
+  $("#formNovaTarefa").addEventListener("submit", e => {
     e.preventDefault();
-    tasks.push({id:Date.now().toString(),title:$("#tituloTarefa").value.trim(),due:$("#prazoTarefa").value,done:false});
-    write(TASKS,tasks); $("#formNovaTarefa").reset(); renderAll();
+
+    if (!currentStudent) return;
+
+    const title = $("#tituloTarefa").value.trim();
+
+    if (!title) return;
+
+    tasks.push({
+      id: crypto.randomUUID
+        ? crypto.randomUUID()
+        : Date.now().toString(),
+      title,
+      due: $("#prazoTarefa").value,
+      done: false
+    });
+
+    writeTasks();
+
+    $("#formNovaTarefa").reset();
+    renderAll();
   });
-  $("#listaTarefas").addEventListener("change",e=>{
-    const id=e.target.dataset.task; if(!id) return;
-    tasks=tasks.map(t=>t.id===id?{...t,done:e.target.checked}:t); write(TASKS,tasks); renderAll();
+
+  $("#listaTarefas").addEventListener("change", e => {
+    const id = e.target.dataset.task;
+
+    if (!id || !currentStudent) return;
+
+    tasks = tasks.map(t =>
+      t.id === id
+        ? { ...t, done: e.target.checked }
+        : t
+    );
+
+    writeTasks();
+    renderAll();
   });
-  $("#listaTarefas").addEventListener("click",e=>{
-    const id=e.target.dataset.removeTask; if(!id) return;
-    tasks=tasks.filter(t=>t.id!==id); write(TASKS,tasks); renderAll();
+
+  $("#listaTarefas").addEventListener("click", e => {
+    const id = e.target.dataset.removeTask;
+
+    if (!id || !currentStudent) return;
+
+    tasks = tasks.filter(t => t.id !== id);
+
+    writeTasks();
+    renderAll();
   });
-  $("#filtroDisciplina").addEventListener("change",renderContents);
+
+  $("#filtroDisciplina").addEventListener(
+    "change",
+    renderContents
+  );
+
+  // ESTADO INICIAL
 
   renderAll();
+
 })();
