@@ -18,6 +18,8 @@
   let activeSection = "visao-geral";
   let suppressAuthObserver = false;
 
+  // SEGURANÇA E UTILITÁRIOS
+
   function escapeHtml(value = "") {
     return String(value).replace(/[&<>"']/g, c => ({
       "&": "&amp;",
@@ -49,57 +51,6 @@
   function loadTasks(uid) {
     tasks = read(TASKS_PREFIX + uid, []);
   }
-  
-async function loadPosts() {
-  const publicacoes = window.schoollinkDb
-    .collection("publicacoes");
-
-  const consultas = [
-    // Publicações destinadas a todos
-    publicacoes
-      .where("status", "==", "ativo")
-      .where("destino", "==", "todos")
-      .get(),
-
-    // Publicações destinadas aos alunos
-    publicacoes
-      .where("status", "==", "ativo")
-      .where("destino", "==", "alunos")
-      .get()
-  ];
-
-  // Publicações destinadas à turma do estudante
-  if (currentStudent?.turma) {
-    consultas.push(
-      publicacoes
-        .where("status", "==", "ativo")
-        .where("destino", "==", "turmas")
-        .where("turmas", "array-contains", currentStudent.turma)
-        .get()
-    );
-  }
-
-  const resultados = await Promise.all(consultas);
-
-  // Evita documentos duplicados
-  const unicas = new Map();
-
-  resultados.forEach(snap => {
-    snap.docs.forEach(doc => {
-      const data = doc.data();
-
-      unicas.set(doc.id, {
-        id: doc.id,
-        ...data,
-        criado: data.criadoEm?.toMillis?.() || 0
-      });
-    });
-  });
-
-  posts = [...unicas.values()]
-    .sort((a, b) => b.criado - a.criado);
-}
-
 
   function fmtDate(value) {
     if (!value) return "Sem data";
@@ -119,12 +70,16 @@ async function loadPosts() {
 
   function showError(id, message) {
     const element = $("#" + id);
+    if (!element) return;
+
     element.textContent = message;
     element.hidden = false;
   }
 
   function clearError(id) {
     const element = $("#" + id);
+    if (!element) return;
+
     element.textContent = "";
     element.hidden = true;
   }
@@ -156,7 +111,13 @@ async function loadPosts() {
         "Falha na conexão. Verifique sua internet.",
 
       "auth/operation-not-allowed":
-        "O login por e-mail e senha não está ativado no Firebase."
+        "O login por e-mail e senha não está ativado no Firebase.",
+
+      "permission-denied":
+        "O Firebase bloqueou o acesso. Verifique as regras do Firestore.",
+
+      "failed-precondition":
+        "Uma consulta precisa de um índice no Firestore. Verifique o erro no console."
     };
 
     return messages[error.code] ||
@@ -188,23 +149,91 @@ async function loadPosts() {
     );
   }
 
+  // PUBLICAÇÕES
+
   function allowedForStudent(post, current) {
     if (
       post.destino === "todos" ||
       post.destino === "alunos"
-    ) return true;
+    ) {
+      return true;
+    }
 
-    return Array.isArray(post.turmas) &&
+    return post.destino === "turmas" &&
+      Array.isArray(post.turmas) &&
       post.turmas.includes(current?.turma);
   }
 
   function isPostVisible(post, current) {
-    return post.status !== "arquivado" &&
+    return post.status === "ativo" &&
       allowedForStudent(post, current);
   }
 
   function visiblePosts() {
-    return posts.filter(p => isPostVisible(p, currentStudent));
+    return posts.filter(p =>
+      isPostVisible(p, currentStudent)
+    );
+  }
+
+  /*
+   * Carrega somente as publicações que podem ser
+   * consultadas pelo estudante.
+   *
+   * Importante: não buscar todas as publicações
+   * para depois filtrar no JavaScript.
+   */
+  async function loadPosts() {
+    const publicacoes = window.schoollinkDb
+      .collection("publicacoes");
+
+    const consultas = [
+      // Publicações destinadas a todos
+      publicacoes
+        .where("status", "==", "ativo")
+        .where("destino", "==", "todos")
+        .get(),
+
+      // Publicações destinadas aos alunos
+      publicacoes
+        .where("status", "==", "ativo")
+        .where("destino", "==", "alunos")
+        .get()
+    ];
+
+    // Publicações destinadas à turma do estudante
+    if (currentStudent?.turma) {
+      consultas.push(
+        publicacoes
+          .where("status", "==", "ativo")
+          .where("destino", "==", "turmas")
+          .where(
+            "turmas",
+            "array-contains",
+            currentStudent.turma
+          )
+          .get()
+      );
+    }
+
+    const resultados = await Promise.all(consultas);
+
+    // Evita documentos duplicados
+    const unicas = new Map();
+
+    resultados.forEach(snap => {
+      snap.docs.forEach(doc => {
+        const data = doc.data();
+
+        unicas.set(doc.id, {
+          id: doc.id,
+          ...data,
+          criado: data.criadoEm?.toMillis?.() || 0
+        });
+      });
+    });
+
+    posts = [...unicas.values()]
+      .sort((a, b) => b.criado - a.criado);
   }
 
   function postIcon(type) {
@@ -249,6 +278,8 @@ async function loadPosts() {
     `;
   }
 
+  // RENDERIZAÇÃO
+
   function renderHome() {
     const visible = visiblePosts();
 
@@ -269,7 +300,8 @@ async function loadPosts() {
 
     $("#totalProximas").textContent =
       activities.filter(p =>
-        !p.data || p.data >= new Date().toISOString().slice(0, 10)
+        !p.data ||
+        p.data >= new Date().toISOString().slice(0, 10)
       ).length;
 
     $("#totalComunicados").textContent = notices.length;
@@ -409,6 +441,8 @@ async function loadPosts() {
     renderNotices();
   }
 
+  // NAVEGAÇÃO
+
   function showSection(name) {
     activeSection = name;
 
@@ -426,23 +460,12 @@ async function loadPosts() {
       btn.setAttribute("aria-selected", String(active));
     });
 
-    if (name === "conteudos") renderContents();
+    if (name === "conteudos") {
+      renderContents();
+    }
   }
 
-  async function loadPosts() {
-    const snap = await window.schoollinkDb
-      .collection("publicacoes")
-      .where("status", "==", "ativo")
-      .get();
-
-    posts = snap.docs
-      .map(d => ({
-        id: d.id,
-        ...d.data(),
-        criado: d.data().criadoEm?.toMillis?.() || 0
-      }))
-      .sort((a, b) => b.criado - a.criado);
-  }
+  // ENTRAR NA ÁREA DO ALUNO
 
   function enter(current) {
     currentStudent = current;
@@ -453,7 +476,8 @@ async function loadPosts() {
     $("#painelAluno").hidden = false;
     $("#btnSair").hidden = false;
 
-    $("#nomeAluno").textContent = current.nome || "estudante";
+    $("#nomeAluno").textContent =
+      current.nome || "estudante";
 
     $("#turmaAluno").textContent =
       `${current.turma
@@ -470,6 +494,8 @@ async function loadPosts() {
     showSection("visao-geral");
     renderAll();
   }
+
+  // SAIR DA CONTA
 
   async function exit() {
     currentStudent = null;
@@ -491,267 +517,300 @@ async function loadPosts() {
 
   // ABRIR E FECHAR CADASTRO
 
-  $("#abrirCadastroAluno").addEventListener("click", showRegister);
-  $("#voltarLoginAluno").addEventListener("click", showLogin);
+  $("#abrirCadastroAluno").addEventListener(
+    "click",
+    showRegister
+  );
+
+  $("#voltarLoginAluno").addEventListener(
+    "click",
+    showLogin
+  );
 
   // CADASTRO DE ESTUDANTE
 
-  $("#formCadastroAluno").addEventListener("submit", async e => {
-    e.preventDefault();
+  $("#formCadastroAluno").addEventListener(
+    "submit",
+    async e => {
+      e.preventDefault();
 
-    clearError("erroCadastroAluno");
+      clearError("erroCadastroAluno");
 
-    if (!firebaseReady()) {
-      showError(
-        "erroCadastroAluno",
-        window.schoollinkFirebaseError ||
-          "O Firebase não está configurado corretamente."
-      );
-      return;
-    }
-
-    const nome = $("#nomeCadastroAluno").value.trim();
-    const turma = $("#turmaCadastroAluno").value.trim();
-    const email = $("#emailCadastroAluno").value.trim().toLowerCase();
-    const senha = $("#senhaCadastroAluno").value;
-    const confirmacao = $("#confirmarSenhaAluno").value;
-
-    if (!validInstitutionalEmail(email)) {
-      showError(
-        "erroCadastroAluno",
-        "Utilize seu e-mail institucional terminado em @estudante.rn.gov.br."
-      );
-      return;
-    }
-
-    if (senha.length < 8) {
-      showError(
-        "erroCadastroAluno",
-        "A senha precisa ter pelo menos 8 caracteres."
-      );
-      return;
-    }
-
-    if (senha !== confirmacao) {
-      showError(
-        "erroCadastroAluno",
-        "As senhas não coincidem."
-      );
-      return;
-    }
-
-    const button = e.submitter;
-    button.disabled = true;
-    button.textContent = "Criando conta...";
-
-    suppressAuthObserver = true;
-
-    try {
-      const credential = await window.schoollinkAuth
-        .createUserWithEmailAndPassword(email, senha);
-
-      const user = credential.user;
-
-      await user.updateProfile({
-        displayName: nome
-      });
-
-      await window.schoollinkDb
-        .collection("perfis")
-        .doc(user.uid)
-        .set({
-          uid: user.uid,
-          nome,
-          turma,
-          email,
-          papel: "aluno",
-          criadoEm: firebase.firestore.FieldValue.serverTimestamp()
-        });
-
-      await user.sendEmailVerification();
-
-      await window.schoollinkAuth.signOut();
-
-      showLogin();
-
-      $("#emailAluno").value = email;
-      $("#senhaAluno").value = "";
-
-      showError(
-        "erroLoginAluno",
-        "Conta criada! Enviamos um link de verificação para seu e-mail institucional. Confirme o endereço antes de entrar."
-      );
-
-      $("#formCadastroAluno").reset();
-
-    } catch (error) {
-      console.error("Erro no cadastro:", error);
-
-      showError(
-        "erroCadastroAluno",
-        firebaseError(error)
-      );
-
-      // Se a conta foi criada, mas alguma etapa posterior falhou,
-      // não deixamos uma sessão parcialmente autenticada aberta.
-      if (window.schoollinkAuth.currentUser) {
-        await window.schoollinkAuth.signOut().catch(() => {});
+      if (!firebaseReady()) {
+        showError(
+          "erroCadastroAluno",
+          window.schoollinkFirebaseError ||
+            "O Firebase não está configurado corretamente."
+        );
+        return;
       }
 
-    } finally {
-      suppressAuthObserver = false;
-      button.disabled = false;
-      button.textContent = "Criar minha conta";
-    }
-  });
+      const nome =
+        $("#nomeCadastroAluno").value.trim();
 
-  // LOGIN DO ESTUDANTE
+      const turma =
+        $("#turmaCadastroAluno").value.trim();
 
-  $("#formLoginAluno").addEventListener("submit", async e => {
-    e.preventDefault();
+      const email =
+        $("#emailCadastroAluno").value.trim().toLowerCase();
 
-    clearError("erroLoginAluno");
+      const senha =
+        $("#senhaCadastroAluno").value;
 
-    if (!firebaseReady()) {
-      showError(
-        "erroLoginAluno",
-        window.schoollinkFirebaseError ||
-          "Configure o Firebase antes de entrar."
-      );
-      return;
-    }
+      const confirmacao =
+        $("#confirmarSenhaAluno").value;
 
-    const email = $("#emailAluno").value.trim().toLowerCase();
-    const senha = $("#senhaAluno").value;
+      if (!validInstitutionalEmail(email)) {
+        showError(
+          "erroCadastroAluno",
+          "Utilize seu e-mail institucional terminado em @estudante.rn.gov.br."
+        );
+        return;
+      }
 
-    if (!validInstitutionalEmail(email)) {
-      showError(
-        "erroLoginAluno",
-        "Utilize seu e-mail institucional @estudante.rn.gov.br."
-      );
-      return;
-    }
+      if (senha.length < 8) {
+        showError(
+          "erroCadastroAluno",
+          "A senha precisa ter pelo menos 8 caracteres."
+        );
+        return;
+      }
 
-    const button = e.submitter;
-    button.disabled = true;
-    button.textContent = "Entrando...";
+      if (senha !== confirmacao) {
+        showError(
+          "erroCadastroAluno",
+          "As senhas não coincidem."
+        );
+        return;
+      }
 
-    suppressAuthObserver = true;
+      const button = e.submitter;
 
-    try {
-      const credential = await window.schoollinkAuth
-        .signInWithEmailAndPassword(email, senha);
+      button.disabled = true;
+      button.textContent = "Criando conta...";
 
-      const user = credential.user;
+      suppressAuthObserver = true;
 
-      if (!user.emailVerified) {
+      try {
+        const credential = await window.schoollinkAuth
+          .createUserWithEmailAndPassword(email, senha);
+
+        const user = credential.user;
+
+        await user.updateProfile({
+          displayName: nome
+        });
+
+        await window.schoollinkDb
+          .collection("perfis")
+          .doc(user.uid)
+          .set({
+            uid: user.uid,
+            nome,
+            turma,
+            email,
+            papel: "aluno",
+            criadoEm:
+              firebase.firestore.FieldValue.serverTimestamp()
+          });
+
         await user.sendEmailVerification();
+
         await window.schoollinkAuth.signOut();
+
+        showLogin();
+
+        $("#emailAluno").value = email;
+        $("#senhaAluno").value = "";
 
         showError(
           "erroLoginAluno",
-          "Seu e-mail ainda não foi verificado. Enviamos um novo link de confirmação. Verifique sua caixa de entrada."
+          "Conta criada! Enviamos um link de verificação para seu e-mail institucional. Confirme o endereço antes de entrar."
         );
 
+        $("#formCadastroAluno").reset();
+
+      } catch (error) {
+        console.error("Erro no cadastro:", error);
+
+        showError(
+          "erroCadastroAluno",
+          firebaseError(error)
+        );
+
+        if (window.schoollinkAuth.currentUser) {
+          await window.schoollinkAuth.signOut().catch(() => {});
+        }
+
+      } finally {
+        suppressAuthObserver = false;
+        button.disabled = false;
+        button.textContent = "Criar minha conta";
+      }
+    }
+  );
+
+  // LOGIN DO ESTUDANTE
+
+  $("#formLoginAluno").addEventListener(
+    "submit",
+    async e => {
+      e.preventDefault();
+
+      clearError("erroLoginAluno");
+
+      if (!firebaseReady()) {
+        showError(
+          "erroLoginAluno",
+          window.schoollinkFirebaseError ||
+            "Configure o Firebase antes de entrar."
+        );
         return;
       }
 
-      const profile = await window.schoollinkDb
-        .collection("perfis")
-        .doc(user.uid)
-        .get();
+      const email =
+        $("#emailAluno").value.trim().toLowerCase();
 
-      if (!profile.exists || profile.data().papel !== "aluno") {
-        throw new Error(
-          "Perfil de estudante não encontrado. Entre em contato com a gestão."
+      const senha =
+        $("#senhaAluno").value;
+
+      if (!validInstitutionalEmail(email)) {
+        showError(
+          "erroLoginAluno",
+          "Utilize seu e-mail institucional @estudante.rn.gov.br."
         );
+        return;
       }
 
-      const data = profile.data();
+      const button = e.submitter;
 
-      currentStudent = {
-        uid: user.uid,
-        nome: data.nome || user.displayName || "Estudante",
-        turma: data.turma || ""
-      };
+      button.disabled = true;
+      button.textContent = "Entrando...";
 
-      await loadPosts();
+      suppressAuthObserver = true;
 
-      enter(currentStudent);
+      try {
+        const credential = await window.schoollinkAuth
+          .signInWithEmailAndPassword(email, senha);
 
-    } catch (error) {
-      console.error("Erro no login:", error);
+        const user = credential.user;
 
-      showError(
-        "erroLoginAluno",
-        firebaseError(error)
-      );
+        if (!user.emailVerified) {
+          await user.sendEmailVerification();
+          await window.schoollinkAuth.signOut();
 
-    } finally {
-      suppressAuthObserver = false;
-      button.disabled = false;
-      button.textContent = "Entrar";
+          showError(
+            "erroLoginAluno",
+            "Seu e-mail ainda não foi verificado. Enviamos um novo link de confirmação. Verifique sua caixa de entrada."
+          );
+
+          return;
+        }
+
+        const profile = await window.schoollinkDb
+          .collection("perfis")
+          .doc(user.uid)
+          .get();
+
+        if (
+          !profile.exists ||
+          profile.data().papel !== "aluno"
+        ) {
+          throw new Error(
+            "Perfil de estudante não encontrado. Entre em contato com a gestão."
+          );
+        }
+
+        const data = profile.data();
+
+        currentStudent = {
+          uid: user.uid,
+          nome: data.nome || user.displayName || "Estudante",
+          turma: data.turma || ""
+        };
+
+        await loadPosts();
+
+        enter(currentStudent);
+
+      } catch (error) {
+        console.error("Erro no login:", error);
+
+        showError(
+          "erroLoginAluno",
+          firebaseError(error)
+        );
+
+      } finally {
+        suppressAuthObserver = false;
+        button.disabled = false;
+        button.textContent = "Entrar";
+      }
     }
-  });
+  );
 
   // RECUPERAÇÃO DE SESSÃO
 
-  window.schoollinkAuth?.onAuthStateChanged(async user => {
-    if (suppressAuthObserver) return;
+  window.schoollinkAuth?.onAuthStateChanged(
+    async user => {
+      if (suppressAuthObserver) return;
 
-    if (!user) {
-      return;
+      if (!user) return;
+
+      try {
+        if (!user.emailVerified) {
+          await window.schoollinkAuth.signOut();
+          return;
+        }
+
+        if (!validInstitutionalEmail(user.email || "")) {
+          await window.schoollinkAuth.signOut();
+          return;
+        }
+
+        const profile = await window.schoollinkDb
+          .collection("perfis")
+          .doc(user.uid)
+          .get();
+
+        if (
+          !profile.exists ||
+          profile.data().papel !== "aluno"
+        ) {
+          await window.schoollinkAuth.signOut();
+          return;
+        }
+
+        const data = profile.data();
+
+        currentStudent = {
+          uid: user.uid,
+          nome: data.nome || user.displayName || "Estudante",
+          turma: data.turma || ""
+        };
+
+        await loadPosts();
+
+        enter(currentStudent);
+
+      } catch (error) {
+        console.error(
+          "Falha ao recuperar sessão ou publicações:",
+          error
+        );
+
+        $("#painelAluno").hidden = true;
+        $("#painelLogin").hidden = false;
+
+        showError(
+          "erroLoginAluno",
+          "Não foi possível carregar sua área de estudante. Tente novamente."
+        );
+      }
     }
+  );
 
-    try {
-      if (!user.emailVerified) {
-        await window.schoollinkAuth.signOut();
-        return;
-      }
-
-      if (!validInstitutionalEmail(user.email || "")) {
-        await window.schoollinkAuth.signOut();
-        return;
-      }
-
-      const profile = await window.schoollinkDb
-        .collection("perfis")
-        .doc(user.uid)
-        .get();
-
-      if (!profile.exists || profile.data().papel !== "aluno") {
-        await window.schoollinkAuth.signOut();
-        return;
-      }
-
-      const data = profile.data();
-
-      currentStudent = {
-        uid: user.uid,
-        nome: data.nome || user.displayName || "Estudante",
-        turma: data.turma || ""
-      };
-
-      await loadPosts();
-      enter(currentStudent);
-
-    } catch (error) {
-      console.error(
-        "Falha ao recuperar sessão ou publicações:",
-        error
-      );
-
-      $("#painelAluno").hidden = true;
-      $("#painelLogin").hidden = false;
-
-      showError(
-        "erroLoginAluno",
-        "Não foi possível carregar sua área de estudante. Tente novamente."
-      );
-    }
-  });
-
-  // SAIR
+  // BOTÃO SAIR
 
   $("#btnSair").addEventListener("click", exit);
 
@@ -776,7 +835,8 @@ async function loadPosts() {
 
     if (!currentStudent) return;
 
-    const title = $("#tituloTarefa").value.trim();
+    const title =
+      $("#tituloTarefa").value.trim();
 
     if (!title) return;
 
@@ -792,34 +852,47 @@ async function loadPosts() {
     writeTasks();
 
     $("#formNovaTarefa").reset();
+
     renderAll();
   });
 
-  $("#listaTarefas").addEventListener("change", e => {
-    const id = e.target.dataset.task;
+  // CONCLUIR TAREFA
 
-    if (!id || !currentStudent) return;
+  $("#listaTarefas").addEventListener(
+    "change",
+    e => {
+      const id = e.target.dataset.task;
 
-    tasks = tasks.map(t =>
-      t.id === id
-        ? { ...t, done: e.target.checked }
-        : t
-    );
+      if (!id || !currentStudent) return;
 
-    writeTasks();
-    renderAll();
-  });
+      tasks = tasks.map(t =>
+        t.id === id
+          ? { ...t, done: e.target.checked }
+          : t
+      );
 
-  $("#listaTarefas").addEventListener("click", e => {
-    const id = e.target.dataset.removeTask;
+      writeTasks();
+      renderAll();
+    }
+  );
 
-    if (!id || !currentStudent) return;
+  // EXCLUIR TAREFA
 
-    tasks = tasks.filter(t => t.id !== id);
+  $("#listaTarefas").addEventListener(
+    "click",
+    e => {
+      const id = e.target.dataset.removeTask;
 
-    writeTasks();
-    renderAll();
-  });
+      if (!id || !currentStudent) return;
+
+      tasks = tasks.filter(t => t.id !== id);
+
+      writeTasks();
+      renderAll();
+    }
+  );
+
+  // FILTRO DE DISCIPLINAS
 
   $("#filtroDisciplina").addEventListener(
     "change",
