@@ -351,7 +351,7 @@
 
   function postCard(post) {
     const due = post.data
-      ? `<span>Prazo/data: ${escapeHtml(fmtDate(post.data))}</span>`
+      ? `<span>Prazo/data ${escapeHtml(fmtDate(post.data))}</span>`
       : "";
 
     return `
