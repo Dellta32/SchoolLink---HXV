@@ -4,6 +4,7 @@
  * Arquivos: Supabase Storage via Edge Function.
  * Turmas: IDs padronizados pelo SchoolLinkTurmas.
  */
+
 (() => {
   "use strict";
 
@@ -17,7 +18,9 @@
   let editingId = null;
   let posts = [];
 
+  // =========================================
   // CONFIGURAÇÕES E UTILITÁRIOS
+  // =========================================
 
   const ready = () =>
     Boolean(
@@ -26,41 +29,43 @@
       window.schoollinkDb
     );
 
-  const esc = v =>
-    String(v ?? "").replace(/[&<>"']/g, c => ({
+  const esc = value =>
+    String(value ?? "").replace(/[&<>"']/g, char => ({
       "&": "&amp;",
       "<": "&lt;",
       ">": "&gt;",
       '"': "&quot;",
       "'": "&#39;"
-    }[c]));
+    }[char]));
 
-  const dateFmt = v =>
-    v
-      ? new Date(v + "T12:00:00").toLocaleDateString("pt-BR")
+  const dateFmt = value =>
+    value
+      ? new Date(value + "T12:00:00").toLocaleDateString("pt-BR")
       : "";
 
-  function err(id, msg) {
-    const el = $(id);
-    if (!el) return;
+  function err(selector, message) {
+    const element = $(selector);
+    if (!element) return;
 
-    el.textContent = msg;
-    el.hidden = false;
+    element.textContent = message;
+    element.hidden = false;
   }
 
-  function clearErr(id) {
-    const el = $(id);
-    if (!el) return;
+  function clearErr(selector) {
+    const element = $(selector);
+    if (!element) return;
 
-    el.textContent = "";
-    el.hidden = true;
+    element.textContent = "";
+    element.hidden = true;
   }
 
   function firebaseReady() {
     return ready();
   }
 
+  // =========================================
   // SISTEMA DE TURMAS
+  // =========================================
 
   function normalizeTurmaId(value) {
     return String(value || "")
@@ -81,10 +86,18 @@
     return $('input[name="destinatario"]:checked')?.value || "todos";
   }
 
+  function getTurmaContainer() {
+    return $("#blocoTurmas .area-turmas__opcoes");
+  }
+
   function getTurmas() {
+    const container = getTurmaContainer();
+
+    if (!container) return [];
+
     return [
       ...new Set(
-        $$('#blocoTurmas input[type="checkbox"]:checked')
+        $$('input[type="checkbox"]:checked', container)
           .map(input => normalizeTurmaId(input.value))
           .filter(Boolean)
       )
@@ -100,11 +113,42 @@
 
     if (invalidas.length) {
       throw Error(
-        "As seguintes turmas não foram encontradas no cadastro: " +
+        "As seguintes turmas não foram encontradas no catálogo: " +
         invalidas.join(", ") +
         ". Confira o arquivo turmas.js."
       );
     }
+  }
+
+  function initializeTurmas(selecionadas = []) {
+    const container = getTurmaContainer();
+
+    if (!container) {
+      console.error(
+        "[SchoolLink] Container de turmas não encontrado."
+      );
+      return;
+    }
+
+    if (!window.SchoolLinkTurmas) {
+      console.error(
+        "[SchoolLink] O catálogo turmas.js não foi carregado."
+      );
+
+      err(
+        "#erroPublicacao",
+        "Não foi possível carregar o catálogo de turmas."
+      );
+
+      return;
+    }
+
+    const ids = selecionadas.map(normalizeTurmaId);
+
+    window.SchoolLinkTurmas.criarCheckboxes(
+      container,
+      ids
+    );
   }
 
   function updateDest() {
@@ -116,7 +160,6 @@
     }
 
     const turmas = getTurmas();
-
     const preview = $("#previewDestino");
 
     if (!preview) return;
@@ -130,76 +173,80 @@
             (turmas.join(", ") || "selecione as turmas");
   }
 
+  // =========================================
   // PRÉVIA DA PUBLICAÇÃO
+  // =========================================
 
   function updatePreview() {
-    $("#previewTipo").textContent =
-      $("#tipoPublicacao").value;
+    const tipo = $("#tipoPublicacao");
+    const titulo = $("#tituloPublicacao");
+    const descricao = $("#descricaoPublicacao");
+    const importancia = $("#importanciaPublicacao");
+    const data = $("#dataPublicacao");
+
+    if (!tipo || !titulo || !descricao || !importancia || !data) {
+      return;
+    }
+
+    $("#previewTipo").textContent = tipo.value;
 
     $("#previewTitulo").textContent =
-      $("#tituloPublicacao").value.trim() ||
-      "Título da publicação";
+      titulo.value.trim() || "Título da publicação";
 
     $("#previewDescricao").textContent =
-      $("#descricaoPublicacao").value.trim() ||
+      descricao.value.trim() ||
       "A descrição da publicação aparecerá aqui enquanto você preenche o formulário.";
-
-    const importancia = $("#importanciaPublicacao").value;
 
     $("#previewImportancia").textContent = ({
       normal: "Normal",
       importante: "Importante",
       urgente: "Urgente"
-    })[importancia] || "Normal";
+    })[importancia.value] || "Normal";
 
     $("#previewImportancia").className =
-      "area-tag area-tag--" + importancia;
+      "area-tag area-tag--" + importancia.value;
 
-    const data = $("#dataPublicacao").value;
+    $("#previewData").hidden = !data.value;
 
-    $("#previewData").hidden = !data;
-
-    $("#previewData").textContent = data
+    $("#previewData").textContent = data.value
       ? (
-          ["Atividade", "Evento"].includes(
-            $("#tipoPublicacao").value
-          )
+          ["Atividade", "Evento"].includes(tipo.value)
             ? "Data: "
             : "Prazo: "
-        ) + dateFmt(data)
+        ) + dateFmt(data.value)
       : "";
 
     updateDest();
   }
 
+  // =========================================
   // NAVEGAÇÃO
+  // =========================================
 
   function showTab(name) {
-    $$("[data-doc-painel]").forEach(el => {
-      el.classList.toggle(
+    $$("[data-doc-painel]").forEach(element => {
+      element.classList.toggle(
         "is-visible",
-        el.dataset.docPainel === name
+        element.dataset.docPainel === name
       );
     });
 
-    $$("[data-doc-secao]").forEach(el => {
-      const active = el.dataset.docSecao === name;
+    $$("[data-doc-secao]").forEach(element => {
+      const active = element.dataset.docSecao === name;
 
-      el.classList.toggle("is-active", active);
-
-      el.setAttribute(
-        "aria-selected",
-        String(active)
-      );
+      element.classList.toggle("is-active", active);
+      element.setAttribute("aria-selected", String(active));
     });
   }
 
+  // =========================================
   // ARQUIVOS
+  // =========================================
 
   function cleanup() {
-    files.forEach(file => {
-      if (file.preview) {
-        URL.revokeObjectURL(file.preview);
+    files.forEach(item => {
+      if (item.preview) {
+        URL.revokeObjectURL(item.preview);
       }
     });
 
@@ -243,43 +290,47 @@
       name: file.name,
       type: file.type,
       size: file.size,
+
       preview: file.type.startsWith("image/")
         ? URL.createObjectURL(file)
         : null
     }));
 
     $("#listaArquivos").innerHTML =
-      files.map(file => `
+      files.map(item => `
         <div class="area-arquivos__item">
           <span>▧</span>
 
           <div>
-            <strong>${esc(file.name)}</strong>
+            <strong>${esc(item.name)}</strong>
+
             <small>
-              ${(file.size / 1048576).toFixed(2)} MB
+              ${(item.size / 1048576).toFixed(2)} MB
             </small>
           </div>
         </div>
       `).join("");
 
     $("#previewAnexos").innerHTML =
-      files.map(file => `
+      files.map(item => `
         <div class="area-preview__arquivo">
           ${
-            file.preview
-              ? `<img src="${file.preview}" alt="Prévia de ${esc(file.name)}">`
+            item.preview
+              ? `<img src="${item.preview}" alt="Prévia de ${esc(item.name)}">`
               : '<span aria-hidden="true">▤</span>'
           }
 
-          <span>${esc(file.name)}</span>
+          <span>${esc(item.name)}</span>
         </div>
       `).join("");
   }
 
+  // =========================================
   // LISTAGEM DE PUBLICAÇÕES
+  // =========================================
 
   function renderPosts() {
-    const filter = $("#filtroTipoDocente").value;
+    const filter = $("#filtroTipoDocente")?.value || "todos";
 
     const items = posts.filter(post =>
       post.status !== "arquivado" &&
@@ -323,7 +374,7 @@
                 <span>
                   ${
                     post.destino === "turmas"
-                      ? turmas.join(", ")
+                      ? esc(turmas.join(", "))
                       : post.destino === "alunos"
                         ? "Estudantes"
                         : "Todos"
@@ -379,7 +430,9 @@
     renderPosts();
   }
 
+  // =========================================
   // ENTRAR E SAIR
+  // =========================================
 
   function enter(user) {
     $("#painelLoginDocente").hidden = true;
@@ -389,8 +442,7 @@
     const status = $(".area-status");
 
     if (status) {
-      status.innerHTML =
-        "<span></span> Conectado ao Firebase";
+      status.innerHTML = "<span></span> Conectado ao Firebase";
     }
 
     refreshPosts().catch(error => {
@@ -414,7 +466,9 @@
     $("#btnSairDocente").hidden = true;
   }
 
+  // =========================================
   // SALVAR PUBLICAÇÃO
+  // =========================================
 
   async function savePost() {
     const tipo = $("#tipoPublicacao").value;
@@ -424,11 +478,8 @@
       ? getTurmas()
       : [];
 
-    const descricao =
-      $("#descricaoPublicacao").value.trim();
-
-    const titulo =
-      $("#tituloPublicacao").value.trim();
+    const descricao = $("#descricaoPublicacao").value.trim();
+    const titulo = $("#tituloPublicacao").value.trim();
 
     if (!titulo) {
       throw Error("Informe um título.");
@@ -477,7 +528,6 @@
       const token = await user.getIdToken();
 
       const formData = new FormData();
-
       formData.append("file", item.file);
 
       const response = await fetch(
@@ -494,9 +544,7 @@
         }
       );
 
-      const result = await response
-        .json()
-        .catch(() => ({}));
+      const result = await response.json().catch(() => ({}));
 
       if (!response.ok || !result.success) {
         throw Error(
@@ -514,7 +562,7 @@
       });
     }
 
-    // MONTAGEM DA PUBLICAÇÃO
+    // DISCIPLINA
 
     const disciplina = tipo === "Conteúdo"
       ? (
@@ -525,20 +573,21 @@
         ).trim()
       : "Geral";
 
+    // MONTAGEM DA PUBLICAÇÃO
+
     const post = {
       tipo,
       titulo,
       descricao,
 
-      importancia:
-        $("#importanciaPublicacao").value,
+      importancia: $("#importanciaPublicacao").value,
 
-      data:
-        $("#dataPublicacao").value || "",
+      data: $("#dataPublicacao").value || "",
 
       destino,
 
-      // IDs padronizados: 1AINFO, 2AINFO, 3AINFO etc.
+      // IDs padronizados do catálogo.
+      // Exemplo: ["1AINFO", "3AINFO", "2BADM"]
       turmas,
 
       disciplina,
@@ -573,12 +622,13 @@
     editingId = null;
   }
 
+  // =========================================
   // LIMPAR FORMULÁRIO
+  // =========================================
 
   function resetForm() {
     const form = $("#formPublicacao");
 
-    // O reset não deve chamar resetForm novamente.
     form.reset();
 
     $("#tipoPublicacao").value = "Anúncio";
@@ -597,10 +647,13 @@
 
     cleanup();
 
+    initializeTurmas();
     updatePreview();
   }
 
+  // =========================================
   // LOGIN DOCENTE
+  // =========================================
 
   $("#formLoginDocente").addEventListener(
     "submit",
@@ -637,12 +690,11 @@
     }
   );
 
+  // =========================================
   // EVENTOS PRINCIPAIS
+  // =========================================
 
-  $("#btnSairDocente").addEventListener(
-    "click",
-    exit
-  );
+  $("#btnSairDocente").addEventListener("click", exit);
 
   $$("[data-doc-secao]").forEach(button => {
     button.addEventListener("click", () => {
@@ -650,7 +702,7 @@
     });
   });
 
-  // ATUALIZAR PRÉVIA
+  // PRÉVIA
 
   [
     "tipoPublicacao",
@@ -659,30 +711,52 @@
     "importanciaPublicacao",
     "dataPublicacao"
   ].forEach(id => {
-    $("#" + id).addEventListener(
-      "input",
-      updatePreview
-    );
+    $("#" + id).addEventListener("input", updatePreview);
+    $("#" + id).addEventListener("change", updatePreview);
   });
 
   $$('input[name="destinatario"]').forEach(input => {
     input.addEventListener("change", updateDest);
   });
 
-  $$("#blocoTurmas input[type='checkbox']").forEach(input => {
-    input.addEventListener("change", updateDest);
+  // Listener delegado: continua funcionando
+  // mesmo quando os checkboxes são recriados.
+
+  const turmaContainer = getTurmaContainer();
+
+  if (turmaContainer) {
+    turmaContainer.addEventListener("change", event => {
+      if (event.target.matches('input[type="checkbox"]')) {
+        updateDest();
+      }
+    });
+  }
+
+  $("#arquivosPublicacao").addEventListener("change", showFiles);
+
+  // RESET MANUAL DO FORMULÁRIO
+
+  $("#formPublicacao").addEventListener("reset", () => {
+    // Aguarda o reset nativo terminar.
+    // Não chama form.reset() novamente.
+    Promise.resolve().then(() => {
+      cleanup();
+
+      editingId = null;
+
+      $("#listaArquivos").innerHTML = "";
+      $("#previewAnexos").innerHTML = "";
+
+      clearErr("#erroPublicacao");
+
+      initializeTurmas();
+      updatePreview();
+    });
   });
 
-  $("#arquivosPublicacao").addEventListener(
-    "change",
-    showFiles
-  );
-
-  // IMPORTANTE:
-  // Não adicionar listener de reset chamando resetForm.
-  // Isso provocaria um ciclo infinito.
-
+  // =========================================
   // PUBLICAR
+  // =========================================
 
   $("#formPublicacao").addEventListener(
     "submit",
@@ -701,6 +775,16 @@
         );
 
         return;
+      }
+
+      const submitButton = $(
+        'button[type="submit"]',
+        $("#formPublicacao")
+      );
+
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = "Publicando...";
       }
 
       try {
@@ -723,24 +807,37 @@
           error.message ||
           "Não foi possível salvar. Verifique Firebase e permissões."
         );
+
+      } finally {
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.textContent = "Publicar";
+        }
       }
     }
   );
 
+  // =========================================
   // FILTRO
+  // =========================================
 
   $("#filtroTipoDocente").addEventListener(
     "change",
     renderPosts
   );
 
+  // =========================================
   // EDITAR E ARQUIVAR
+  // =========================================
 
   $("#listaPublicacoes").addEventListener(
     "click",
     async event => {
-      const id = event.target.dataset.edit;
-      const archive = event.target.dataset.archive;
+      const editButton = event.target.closest("[data-edit]");
+      const archiveButton = event.target.closest("[data-archive]");
+
+      const id = editButton?.dataset.edit;
+      const archive = archiveButton?.dataset.archive;
 
       // EDITAR
 
@@ -751,18 +848,19 @@
 
         editingId = id;
 
-        $("#tipoPublicacao").value = post.tipo;
-        $("#tituloPublicacao").value = post.titulo;
-        $("#descricaoPublicacao").value = post.descricao;
+        $("#tipoPublicacao").value = post.tipo || "Anúncio";
+        $("#tituloPublicacao").value = post.titulo || "";
+        $("#descricaoPublicacao").value = post.descricao || "";
 
         $("#importanciaPublicacao").value =
           post.importancia || "normal";
 
-        $("#dataPublicacao").value =
-          post.data || "";
+        $("#dataPublicacao").value = post.data || "";
+
+        const destino = post.destino || "todos";
 
         const radio = $(
-          `input[name="destinatario"][value="${post.destino || "todos"}"]`
+          `input[name="destinatario"][value="${destino}"]`
         );
 
         if (radio) {
@@ -773,11 +871,22 @@
           ? post.turmas.map(normalizeTurmaId)
           : [];
 
-        $$("#blocoTurmas input[type='checkbox']").forEach(input => {
-          input.checked = turmasPost.includes(
-            normalizeTurmaId(input.value)
+        // Recria os checkboxes já marcando as turmas salvas.
+        initializeTurmas(turmasPost);
+
+        // Compatibilidade com publicações antigas.
+        const antigas = turmasPost.filter(id => !getTurma(id));
+
+        if (antigas.length) {
+          err(
+            "#erroPublicacao",
+            "Esta publicação contém IDs antigos de turmas (" +
+            antigas.join(", ") +
+            "). Selecione as turmas correspondentes no novo catálogo antes de salvar."
           );
-        });
+        } else {
+          clearErr("#erroPublicacao");
+        }
 
         $("#listaArquivos").innerHTML =
           (post.arquivos || []).map(file => `
@@ -792,6 +901,8 @@
           `).join("");
 
         $("#previewAnexos").innerHTML = "";
+
+        $("#blocoTurmas").hidden = destino !== "turmas";
 
         updatePreview();
 
@@ -829,7 +940,9 @@
     }
   );
 
+  // =========================================
   // RECUPERAÇÃO DE SESSÃO
+  // =========================================
 
   window.schoollinkAuth?.onAuthStateChanged(user => {
     if (user) {
@@ -842,7 +955,11 @@
     }
   });
 
+  // =========================================
   // ESTADO INICIAL
+  // =========================================
+
+  initializeTurmas();
 
   if (!ready()) {
     const note = $(".area-form__nota");
