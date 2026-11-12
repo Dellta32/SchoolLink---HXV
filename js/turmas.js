@@ -41,35 +41,42 @@
       return turmas.find(turma => turma.id === id) || null;
     },
 
-    preencherSelect(elemento, placeholder = "Selecione sua turma") {
-      if (!elemento) return;
+    
+preencherSelect(
+  elemento,
+  placeholder = "Selecione sua turma",
+  selecionada = ""
+) {
+  if (!elemento) return;
 
-      elemento.innerHTML = "";
+  elemento.replaceChildren();
 
-      const opcaoInicial = document.createElement("option");
-      opcaoInicial.value = "";
-      opcaoInicial.textContent = placeholder;
-      opcaoInicial.disabled = true;
-      opcaoInicial.selected = true;
+  const opcaoInicial = document.createElement("option");
+  opcaoInicial.value = "";
+  opcaoInicial.textContent = placeholder;
+  opcaoInicial.disabled = true;
+  opcaoInicial.selected = !selecionada;
 
-      elemento.appendChild(opcaoInicial);
+  elemento.appendChild(opcaoInicial);
 
-      cursos.forEach(curso => {
-        const grupo = document.createElement("optgroup");
-        grupo.label = curso.nome;
+  cursos.forEach(curso => {
+    const grupo = document.createElement("optgroup");
+    grupo.label = curso.nome;
 
-        turmas
-          .filter(turma => turma.curso === curso.codigo)
-          .forEach(turma => {
-            const opcao = document.createElement("option");
-            opcao.value = turma.id;
-            opcao.textContent = turma.nome;
-            grupo.appendChild(opcao);
-          });
-
-        elemento.appendChild(grupo);
+    turmas
+      .filter(turma => turma.curso === curso.codigo)
+      .forEach(turma => {
+        const opcao = document.createElement("option");
+        opcao.value = turma.id;
+        opcao.textContent = turma.nome;
+        opcao.selected = turma.id === selecionada;
+        grupo.appendChild(opcao);
       });
-    },
+
+    elemento.appendChild(grupo);
+  });
+},
+
 
     criarCheckboxes(elemento, selecionadas = []) {
       if (!elemento) return;
