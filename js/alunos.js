@@ -33,7 +33,6 @@
   function read(key, fallback) {
     try {
       const value = localStorage.getItem(key);
-
       return value ? JSON.parse(value) : fallback;
     } catch {
       return fallback;
@@ -67,6 +66,20 @@
 
   function validInstitutionalEmail(email) {
     return email.toLowerCase().endsWith(EMAIL_DOMAIN);
+  }
+
+  // SISTEMA DE TURMAS
+
+  function getTurma(id) {
+    return window.SchoolLinkTurmas?.obter(id) || null;
+  }
+
+  function getTurmaId(profile) {
+    const id = String(
+      profile?.turmaId || profile?.turma || ""
+    ).trim().toUpperCase();
+
+    return getTurma(id) ? id : "";
   }
 
   function showError(id, message) {
@@ -160,127 +173,133 @@
       return true;
     }
 
-    return post.destino === "turmas" &&
+    const turmaId = getTurmaId(current || {});
+
+    if (!turmaId) return false;
+
+    return (
+      post.destino === "turmas" &&
       Array.isArray(post.turmas) &&
-      post.turmas.includes(current?.turma);
+      post.turmas
+        .map(id => String(id).trim().toUpperCase())
+        .includes(turmaId)
+    );
   }
 
   function isPostVisible(post, current) {
-    return post.status === "ativo" &&
-      allowedForStudent(post, current);
+    return (
+      post.status === "ativo" &&
+      allowedForStudent(post, current)
+    );
   }
 
   function visiblePosts() {
-    return posts.filter(p =>
-      isPostVisible(p, currentStudent)
+    return posts.filter(post =>
+      isPostVisible(post, currentStudent)
     );
   }
 
   /*
-   * Carrega somente as publicações que podem ser
-   * consultadas pelo estudante.
+   * Carrega publicações gerais, para alunos
+   * e direcionadas especificamente à turma.
    */
-  
-async function loadPosts() {
-  console.log("[SchoolLink] Iniciando loadPosts.");
 
-  const publicacoes = window.schoollinkDb
-    .collection("publicacoes");
+  async function loadPosts() {
+    console.log("[SchoolLink] Iniciando loadPosts.");
 
-  const consultas = [
-    {
-      nome: "Publicações para todos",
-      consulta: publicacoes
-        .where("status", "==", "ativo")
-        .where("destino", "==", "todos")
-    },
-    {
-      nome: "Publicações para alunos",
-      consulta: publicacoes
-        .where("status", "==", "ativo")
-        .where("destino", "==", "alunos")
-    }
-  ];
+    const publicacoes = window.schoollinkDb
+      .collection("publicacoes");
 
-  if (currentStudent?.turma) {
-    consultas.push({
-      nome: "Publicações da turma",
-      consulta: publicacoes
-        .where("status", "==", "ativo")
-        .where("destino", "==", "turmas")
-        .where(
-          "turmas",
-          "array-contains",
-          currentStudent.turma
-        )
-    });
-  }
+    const consultas = [
+      {
+        nome: "Publicações para todos",
+        consulta: publicacoes
+          .where("status", "==", "ativo")
+          .where("destino", "==", "todos")
+      },
+      {
+        nome: "Publicações para alunos",
+        consulta: publicacoes
+          .where("status", "==", "ativo")
+          .where("destino", "==", "alunos")
+      }
+    ];
 
-  // Atualiza o token para garantir que as
-  // informações de verificação estejam atualizadas.
-  const user = window.schoollinkAuth.currentUser;
+    const turmaId = getTurmaId(currentStudent || {});
 
-  if (user) {
-    await user.getIdToken(true);
-
-    const token = await user.getIdTokenResult();
-
-    console.log(
-      "[SchoolLink] E-mail verificado no token:",
-      token.claims.email_verified
-    );
-  }
-
-  const unicas = new Map();
-
-  for (const item of consultas) {
-    try {
-      console.log(
-        "[SchoolLink] Testando consulta:",
-        item.nome
-      );
-
-      const snap = await item.consulta.get();
-
-      console.log(
-        "[SchoolLink] Consulta autorizada:",
-        item.nome,
-        "Documentos:",
-        snap.size
-      );
-
-      snap.docs.forEach(doc => {
-        const data = doc.data();
-
-        unicas.set(doc.id, {
-          id: doc.id,
-          ...data,
-          criado: data.criadoEm?.toMillis?.() || 0
-        });
+    if (turmaId) {
+      consultas.push({
+        nome: "Publicações da turma",
+        consulta: publicacoes
+          .where("status", "==", "ativo")
+          .where("destino", "==", "turmas")
+          .where("turmas", "array-contains", turmaId)
       });
-
-    } catch (error) {
-      console.error(
-        "[SchoolLink] Consulta bloqueada:",
-        item.nome,
-        {
-          codigo: error.code,
-          mensagem: error.message
-        }
-      );
-
-      throw error;
     }
-  }
+
+    const user = window.schoollinkAuth.currentUser;
+
+    if (user) {
+      await user.getIdToken(true);
+
+      const token = await user.getIdTokenResult();
+
+      console.log(
+        "[SchoolLink] E-mail verificado no token:",
+        token.claims.email_verified
+      );
+    }
+
+    const unicas = new Map();
+
+    for (const item of consultas) {
+      try {
+        console.log(
+          "[SchoolLink] Testando consulta:",
+          item.nome
+        );
+
+        const snap = await item.consulta.get();
+
+        console.log(
+          "[SchoolLink] Consulta autorizada:",
+          item.nome,
+          "Documentos:",
+          snap.size
+        );
+
+        snap.docs.forEach(doc => {
+          const data = doc.data();
+
+          unicas.set(doc.id, {
+            id: doc.id,
+            ...data,
+            criado: data.criadoEm?.toMillis?.() || 0
+          });
+        });
+
+      } catch (error) {
+        console.error(
+          "[SchoolLink] Consulta bloqueada:",
+          item.nome,
+          {
+            codigo: error.code,
+            mensagem: error.message
+          }
+        );
+
+        throw error;
+      }
+    }
 
     posts = [...unicas.values()]
-    .sort((a, b) => b.criado - a.criado);
+      .sort((a, b) => b.criado - a.criado);
 
-  console.log(
-    "[SchoolLink] Publicações carregadas:",
-    posts.length
-  );
-}
+    console.log(
+      "[SchoolLink] Publicações carregadas:",
+      posts.length
+    );
+  }
 
   function postIcon(type) {
     return ({
@@ -595,7 +614,7 @@ async function loadPosts() {
         $("#nomeCadastroAluno").value.trim();
 
       const turma =
-        $("#turmaCadastroAluno").value.trim();
+        $("#turmaCadastroAluno").value.trim().toUpperCase();
 
       const email =
         $("#emailCadastroAluno").value.trim().toLowerCase();
@@ -630,6 +649,14 @@ async function loadPosts() {
         return;
       }
 
+      if (!getTurma(turma)) {
+        showError(
+          "erroCadastroAluno",
+          "Selecione uma turma válida."
+        );
+        return;
+      }
+
       const button = e.submitter;
 
       button.disabled = true;
@@ -653,6 +680,7 @@ async function loadPosts() {
           .set({
             uid: user.uid,
             nome,
+            turmaId: turma,
             turma,
             email,
             papel: "aluno",
@@ -780,7 +808,8 @@ async function loadPosts() {
         currentStudent = {
           uid: user.uid,
           nome: data.nome || user.displayName || "Estudante",
-          turma: data.turma || ""
+          turmaId: getTurmaId(data),
+          turma: getTurmaId(data)
         };
 
         console.log("[SchoolLink] Iniciando carregamento das publicações...");
@@ -859,7 +888,8 @@ async function loadPosts() {
         currentStudent = {
           uid: user.uid,
           nome: data.nome || user.displayName || "Estudante",
-          turma: data.turma || ""
+          turmaId: getTurmaId(data),
+          turma: getTurmaId(data)
         };
 
         console.log("[SchoolLink] Iniciando consulta das publicações...");
