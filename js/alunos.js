@@ -82,7 +82,7 @@
     return getTurma(id) ? id : "";
   }
 
-  // NOVO: CARREGAMENTO DAS TURMAS NO CADASTRO
+  // CARREGAMENTO DAS TURMAS NO CADASTRO
 
   function carregarTurmasCadastro() {
     const select = $("#turmaCadastroAluno");
@@ -335,14 +335,18 @@
     );
   }
 
+  // ÍCONES DAS PUBLICAÇÕES
+
   function postIcon(type) {
-    return ({
-      Atividade: "✓",
-      Conteúdo: "▤",
-      Comunicado: "!",
-      Evento: "▦",
-      Anúncio: "•"
-    })[type] || "•";
+    const icons = {
+      "Atividade": "✓",
+      "Conteúdo": "▤",
+      "Comunicado": "!",
+      "Evento": "▦",
+      "Anúncio": "•"
+    };
+
+    return icons[type] || "•";
   }
 
   function postCard(post) {
