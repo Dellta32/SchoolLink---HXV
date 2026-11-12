@@ -15,7 +15,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
 
   <script src="firebase-config.js"></script>
   <script src="js/firebase-init.js"></script>
@@ -25,16 +24,14 @@
   <script src="supabase-config.js"></script>
   <script src="js/supabase-init.js"></script>
 
-  <!-- Catálogo de turmas: deve carregar antes do corpo docente -->
+  <!-- Catálogo de turmas: carregar antes do corpo docente -->
   <script src="js/turmas.js" defer></script>
   <script src="js/corpo-docente.js" defer></script>
 </head>
 
 <body class="corpo-docente-page">
 
-  <!-- =====================================
-       CABEÇALHO
-  ====================================== -->
+  <!-- CABEÇALHO -->
 
   <header class="site-header">
     <nav class="site-nav" aria-label="Navegação principal">
@@ -86,9 +83,7 @@
     </nav>
   </header>
 
-  <!-- =====================================
-       CONTEÚDO PRINCIPAL
-  ====================================== -->
+  <!-- CONTEÚDO PRINCIPAL -->
 
   <main class="area-docente">
 
@@ -202,9 +197,7 @@
 
     </section>
 
-    <!-- =====================================
-         PAINEL DOCENTE
-    ====================================== -->
+    <!-- PAINEL DOCENTE -->
 
     <section
       class="area-docente__app"
@@ -264,9 +257,7 @@
 
       </div>
 
-      <!-- =====================================
-           NOVA PUBLICAÇÃO
-      ====================================== -->
+      <!-- NOVA PUBLICAÇÃO -->
 
       <section
         class="area-secao is-visible"
@@ -432,12 +423,10 @@
                 Selecione as turmas
               </span>
 
-              <div class="area-turmas__opcoes">
-                <!--
-                  As turmas são geradas automaticamente
-                  pelo arquivo js/turmas.js.
-                -->
-              </div>
+              <div
+                id="opcoesTurmas"
+                class="area-turmas__opcoes"
+              ></div>
 
               <small class="area-form__nota">
                 Selecione uma ou mais turmas para direcionar
@@ -500,9 +489,7 @@
 
           </form>
 
-          <!-- =====================================
-               PRÉ-VISUALIZAÇÃO
-          ====================================== -->
+          <!-- PRÉ-VISUALIZAÇÃO -->
 
           <aside class="area-card area-preview">
 
@@ -581,9 +568,7 @@
 
       </section>
 
-      <!-- =====================================
-           GERENCIAR PUBLICAÇÕES
-      ====================================== -->
+      <!-- GERENCIAR PUBLICAÇÕES -->
 
       <section
         class="area-secao"
@@ -650,9 +635,7 @@
 
   </main>
 
-  <!-- =====================================
-       NAVEGAÇÃO MOBILE
-  ====================================== -->
+  <!-- NAVEGAÇÃO MOBILE -->
 
   <nav
     class="mobile-nav"
@@ -705,9 +688,7 @@
 
   </nav>
 
-  <!-- =====================================
-       RODAPÉ
-  ====================================== -->
+  <!-- RODAPÉ -->
 
   <footer class="site-footer">
 
