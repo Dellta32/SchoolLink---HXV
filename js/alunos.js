@@ -1,4 +1,3 @@
-```javascript```
 /* SchoolLink HXV — Área do aluno
  * Firebase Authentication + Firestore
  * Tarefas pessoais: localStorage por UID.
@@ -1058,4 +1057,3 @@
   renderAll();
 
 })();
-```
