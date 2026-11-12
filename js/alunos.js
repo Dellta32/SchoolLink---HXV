@@ -1,4 +1,4 @@
-
+```javascript
 /* SchoolLink HXV — Área do aluno
  * Firebase Authentication + Firestore
  * Tarefas pessoais: localStorage por UID.
@@ -80,6 +80,40 @@
     ).trim().toUpperCase();
 
     return getTurma(id) ? id : "";
+  }
+
+  // NOVO: CARREGAMENTO DAS TURMAS NO CADASTRO
+
+  function carregarTurmasCadastro() {
+    const select = $("#turmaCadastroAluno");
+
+    if (!select) {
+      console.error(
+        "[SchoolLink] Campo #turmaCadastroAluno não encontrado."
+      );
+      return;
+    }
+
+    if (!window.SchoolLinkTurmas) {
+      console.error(
+        "[SchoolLink] Catálogo SchoolLinkTurmas não foi carregado."
+      );
+
+      select.innerHTML =
+        '<option value="">Erro ao carregar turmas</option>';
+
+      return;
+    }
+
+    window.SchoolLinkTurmas.preencherSelect(
+      select,
+      "Selecione sua turma"
+    );
+
+    console.log(
+      "[SchoolLink] Turmas carregadas:",
+      window.SchoolLinkTurmas.listar()
+    );
   }
 
   function showError(id, message) {
@@ -1009,6 +1043,8 @@
 
   // ESTADO INICIAL
 
+  carregarTurmasCadastro();
   renderAll();
 
 })();
+```
