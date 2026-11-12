@@ -349,10 +349,17 @@
     return icons[type] || "•";
   }
 
+  // CARTÃO DE PUBLICAÇÃO
+
   function postCard(post) {
-    const due = post.data
-      ? `<span>Prazo/data ${escapeHtml(fmtDate(post.data))}</span>`
-      : "";
+    let due = "";
+
+    if (post.data) {
+      due =
+        "<span>Prazo/data: " +
+        escapeHtml(fmtDate(post.data)) +
+        "</span>";
+    }
 
     return `
       <article class="area-lista__item">
