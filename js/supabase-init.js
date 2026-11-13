@@ -2,6 +2,7 @@
 /* SchoolLink HXV — Inicialização do Supabase
  * Supabase Storage: imagens e arquivos das publicações.
  * Firebase: autenticação e dados.
+ * O status visual é controlado exclusivamente pelo corpo-docente.js.
  */
 (() => {
   "use strict";
@@ -25,10 +26,10 @@
     window.schoollinkSupabaseReady = false;
     window.schoollinkSupabaseError =
       "Preencha supabase-config.js com a Project URL e a Publishable key e confira a conexão.";
+
     return;
   }
 
-  // Inicialização do cliente
   window.schoollinkSupabase = sdk.createClient(
     config.url,
     config.publishableKey
@@ -37,92 +38,9 @@
   window.schoollinkSupabaseReady = true;
   window.schoollinkSupabaseError = null;
 
-  // INDICADOR DE STATUS DO SUPABASE
-  async function verificarSupabase() {
-    const iniciar = () => {
-      const container = document.querySelector(
-        ".area-docente__status-servicos"
-      );
-
-      if (!container) {
-        console.warn(
-          "[SchoolLink] Container .area-docente__status-servicos não encontrado."
-        );
-        return null;
-      }
-
-      let indicador = container.querySelector(
-        "#schoollinkSupabaseStatus"
-      );
-
-      if (!indicador) {
-        indicador = document.createElement("div");
-
-        indicador.id = "schoollinkSupabaseStatus";
-        indicador.className = "area-status-servico area-status-servico--supabase";
-
-        indicador.style.cssText = `
-          padding: 10px 14px;
-          border-radius: 10px;
-          background: #333;
-          color: white;
-          font: 13px Arial, sans-serif;
-          white-space: nowrap;
-        `;
-
-        container.appendChild(indicador);
-      }
-
-      return indicador;
-    };
-
-    const indicador = document.readyState === "loading"
-      ? await new Promise(resolve => {
-          document.addEventListener(
-            "DOMContentLoaded",
-            () => resolve(iniciar()),
-            { once: true }
-          );
-        })
-      : iniciar();
-
-    if (!indicador) return;
-
-    indicador.textContent = "Verificando Supabase...";
-    indicador.style.background = "#333";
-
-    try {
-      const resposta = await fetch(
-        config.url + "/auth/v1/health",
-        {
-          method: "GET",
-          headers: {
-            apikey: config.publishableKey
-          }
-        }
-      );
-
-      if (resposta.ok) {
-        indicador.textContent = "Supabase: conexão OK";
-        indicador.style.background = "#167a45";
-      } else {
-        indicador.textContent =
-          "Supabase: resposta " + resposta.status;
-
-        indicador.style.background = "#a34b20";
-      }
-
-    } catch (erro) {
-      console.error(
-        "[SchoolLink] Erro na conexão Supabase:",
-        erro
-      );
-
-      indicador.textContent = "Supabase: falha na conexão";
-      indicador.style.background = "#a52a2a";
-    }
-  }
-
-  verificarSupabase();
+  // Remove indicadores antigos duplicados.
+  document.querySelectorAll(
+    "#schoollinkSupabaseStatus, #schoollinkServiceIndicators"
+  ).forEach(element => element.remove());
 
 })();
