@@ -1,3 +1,4 @@
+
 /* SchoolLink HXV — Corpo docente
  * Dados e sessão exclusivamente no Firebase.
  * Arquivos: Supabase Storage via Edge Function.
@@ -80,10 +81,166 @@
     );
   }
 
-  function updateServiceStatus() {
-    const status = $(".area-status");
+  function addServiceStatusStyles() {
+    if ($("#schoollinkServiceStatusStyles")) return;
 
-    if (!status) return;
+    const style = document.createElement("style");
+    style.id = "schoollinkServiceStatusStyles";
+
+    style.textContent = `
+      #schoollinkServiceStatus {
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+        gap: 10px 20px;
+        width: 100%;
+        max-width: 1100px;
+        margin: 18px auto 24px;
+        padding: 12px 18px;
+        border: 1px solid rgba(128,128,128,.18);
+        border-radius: 12px;
+        background: var(--cor-superficie, #fff);
+        color: var(--cor-texto, #222);
+        font-family: inherit;
+        font-size: 13px;
+      }
+
+      #schoollinkServiceStatus .schoollink-service-status__item {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+        white-space: nowrap;
+      }
+
+      #schoollinkServiceStatus .schoollink-service-status__dot {
+        display: inline-block;
+        flex: 0 0 9px;
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+      }
+
+      #schoollinkServiceStatus .is-ready {
+        background: #22c55e;
+        box-shadow: 0 0 0 3px rgba(34,197,94,.13);
+      }
+
+      #schoollinkServiceStatus .is-offline {
+        background: #ef4444;
+        box-shadow: 0 0 0 3px rgba(239,68,68,.13);
+      }
+
+      #schoollinkServiceStatus .schoollink-service-status__name {
+        font-weight: 700;
+      }
+
+      #schoollinkServiceStatus .schoollink-service-status__state {
+        opacity: .75;
+      }
+
+      @media (max-width: 768px) {
+        #schoollinkServiceStatus {
+          justify-content: center;
+          gap: 12px 18px;
+          width: calc(100% - 28px);
+          margin: 14px auto 20px;
+          padding: 12px;
+          font-size: 12px;
+        }
+      }
+
+      @media (max-width: 380px) {
+        #schoollinkServiceStatus {
+          gap: 10px 14px;
+          padding: 10px 8px;
+        }
+
+        #schoollinkServiceStatus .schoollink-service-status__state {
+          display: none;
+        }
+      }
+    `;
+
+    document.head.appendChild(style);
+  }
+
+  function getServiceStatusPosition() {
+    const painel = $("#painelDocente");
+
+    if (!painel) return null;
+
+    /*
+     * Procura a navegação do painel.
+     * O indicador será colocado DEPOIS dela,
+     * nunca dentro da navbar.
+     */
+    const nav = painel.querySelector(
+      "nav, [role='navigation'], .area-nav, .area-navbar"
+    );
+
+    if (nav) {
+      const header = nav.closest("header");
+
+      return {
+        parent: (header || nav).parentNode,
+        reference: header || nav
+      };
+    }
+
+    /*
+     * Caso não exista uma navbar identificável,
+     * coloca o indicador no início do painel.
+     */
+    return {
+      parent: painel,
+      reference: painel.firstElementChild
+    };
+  }
+
+  function createServiceStatus() {
+    let status = $("#schoollinkServiceStatus");
+
+    if (status) return status;
+
+    status = document.createElement("div");
+    status.id = "schoollinkServiceStatus";
+    status.setAttribute("role", "status");
+    status.setAttribute("aria-label", "Status dos serviços");
+
+    return status;
+  }
+
+  function updateServiceStatus() {
+    addServiceStatusStyles();
+
+    const status = createServiceStatus();
+    const position = getServiceStatusPosition();
+
+    if (!position) return;
+
+    /*
+     * Reposiciona o elemento caso ele tenha sido
+     * colocado anteriormente em outro local.
+     */
+    if (
+      status.parentNode !== position.parent ||
+      (
+        position.reference &&
+        status.previousElementSibling !== position.reference
+      )
+    ) {
+      if (position.reference) {
+        position.parent.insertBefore(
+          status,
+          position.reference.nextSibling
+        );
+      } else {
+        position.parent.appendChild(status);
+      }
+    }
 
     const services = [
       {
@@ -98,39 +255,24 @@
 
     status.innerHTML = services.map(service => `
       <span
-        class="schoollink-service-status"
-        style="
-          display:inline-flex;
-          align-items:center;
-          gap:6px;
-          margin-right:14px;
-          font-size:13px;
-          white-space:nowrap;
-        "
+        class="schoollink-service-status__item"
         title="${service.name}: ${
           service.ready ? "Inicializado" : "Não inicializado"
         }"
       >
         <span
+          class="schoollink-service-status__dot ${
+            service.ready ? "is-ready" : "is-offline"
+          }"
           aria-hidden="true"
-          style="
-            display:inline-block;
-            width:9px;
-            height:9px;
-            border-radius:50%;
-            background:${service.ready ? "#22c55e" : "#ef4444"};
-            box-shadow:0 0 0 3px ${
-              service.ready
-                ? "rgba(34,197,94,.13)"
-                : "rgba(239,68,68,.13)"
-            };
-          "
         ></span>
 
-        <strong>${service.name}:</strong>
+        <span class="schoollink-service-status__name">
+          ${service.name}:
+        </span>
 
-        <span>
-          ${service.ready ? "Pronto" : "Indisponível"}
+        <span class="schoollink-service-status__state">
+          ${service.ready ? "Inicializado" : "Não inicializado"}
         </span>
       </span>
     `).join("");
@@ -501,7 +643,6 @@
       .orderBy("criadoEm", "desc")
       .get();
 
-    // Confere novamente após a consulta.
     if (
       !window.schoollinkAuth.currentUser ||
       authorizedUid !== user.uid
@@ -618,7 +759,6 @@
         .doc(user.uid)
         .get();
 
-      // Ignora verificações antigas.
       if (currentCheck !== authCheckId) return;
 
       if (!profileSnap.exists) {
@@ -746,12 +886,7 @@
 
     const config = window.SCHOOLLINK_SUPABASE_CONFIG;
 
-    if (
-      files.length &&
-      (
-        !getSupabaseReady()
-      )
-    ) {
+    if (files.length && !getSupabaseReady()) {
       throw Error(
         "Supabase não está configurado corretamente."
       );
@@ -769,12 +904,13 @@
     // ENVIO DOS ARQUIVOS
 
     for (const item of files) {
-      // Confere a autorização antes de cada upload.
       if (
         !window.schoollinkAuth.currentUser ||
         authorizedUid !== user.uid
       ) {
-        throw Error("Sua sessão não possui autorização para enviar arquivos.");
+        throw Error(
+          "Sua sessão não possui autorização para enviar arquivos."
+        );
       }
 
       const token = await user.getIdToken();
@@ -831,7 +967,9 @@
       !window.schoollinkAuth.currentUser ||
       authorizedUid !== user.uid
     ) {
-      throw Error("Sua sessão perdeu a autorização para publicar.");
+      throw Error(
+        "Sua sessão perdeu a autorização para publicar."
+      );
     }
 
     // MONTAGEM DA PUBLICAÇÃO
@@ -1216,15 +1354,12 @@
   // RECUPERAÇÃO DE SESSÃO E AUTORIZAÇÃO
   // =========================================
 
-  // Impede a exibição do painel antes da verificação.
-
   $("#painelDocente").hidden = true;
   $("#btnSairDocente").hidden = true;
 
   createAccessDeniedPanel();
 
   window.schoollinkAuth?.onAuthStateChanged(user => {
-    // Invalida verificações anteriores.
     authCheckId++;
 
     authorizedUid = null;
