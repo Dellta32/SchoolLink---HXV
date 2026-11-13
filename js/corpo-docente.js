@@ -522,6 +522,15 @@
       );
     }
 
+    // ENDPOINT CORRETO DA EDGE FUNCTION
+
+    const supabaseBaseUrl = config?.url
+      ? config.url.replace(/\/+$/, "")
+      : "";
+
+    const uploadEndpoint =
+      `${supabaseBaseUrl}/functions/v1/super-action`;
+
     // ENVIO DOS ARQUIVOS
 
     for (const item of files) {
@@ -531,7 +540,7 @@
       formData.append("file", item.file);
 
       const response = await fetch(
-        `${config.url}/functions/v1/schoollink-arquivo`,
+        uploadEndpoint,
         {
           method: "POST",
 
@@ -569,7 +578,7 @@
           prompt(
             "Disciplina do conteúdo (ex.: Informática):",
             old?.disciplina || "Informática"
-          ) || "Geral"
+          ) || "Informática"
         ).trim()
       : "Geral";
 
@@ -586,8 +595,6 @@
 
       destino,
 
-      // IDs padronizados do catálogo.
-      // Exemplo: ["1AINFO", "3AINFO", "2BADM"]
       turmas,
 
       disciplina,
@@ -719,8 +726,7 @@
     input.addEventListener("change", updateDest);
   });
 
-  // Listener delegado: continua funcionando
-  // mesmo quando os checkboxes são recriados.
+  // Listener delegado para checkboxes das turmas.
 
   const turmaContainer = getTurmaContainer();
 
@@ -737,8 +743,6 @@
   // RESET MANUAL DO FORMULÁRIO
 
   $("#formPublicacao").addEventListener("reset", () => {
-    // Aguarda o reset nativo terminar.
-    // Não chama form.reset() novamente.
     Promise.resolve().then(() => {
       cleanup();
 
@@ -871,10 +875,8 @@
           ? post.turmas.map(normalizeTurmaId)
           : [];
 
-        // Recria os checkboxes já marcando as turmas salvas.
         initializeTurmas(turmasPost);
 
-        // Compatibilidade com publicações antigas.
         const antigas = turmasPost.filter(id => !getTurma(id));
 
         if (antigas.length) {
