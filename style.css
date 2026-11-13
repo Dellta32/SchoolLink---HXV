@@ -1911,15 +1911,14 @@ body.area-imagem-aberta {
   }
 
   #btnVoltarTopo svg {
-    width: 23px;
-    height: 23px;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-
+  width: 23px;
+  height: 23px;
+  fill: none !important;
+  stroke: #ffffff !important;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
   #btnVoltarTopo:active {
     transform: scale(0.9);
     background: #12315e;
