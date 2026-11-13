@@ -175,22 +175,16 @@
   }
 
   function showLogin() {
-    const login = $("#formLoginAluno");
-    const cadastro = $("#formCadastroAluno");
-
-    if (login) login.hidden = false;
-    if (cadastro) cadastro.hidden = true;
+    $("#formLoginAluno").hidden = false;
+    $("#formCadastroAluno").hidden = true;
 
     clearError("erroLoginAluno");
     clearError("erroCadastroAluno");
   }
 
   function showRegister() {
-    const login = $("#formLoginAluno");
-    const cadastro = $("#formCadastroAluno");
-
-    if (login) login.hidden = true;
-    if (cadastro) cadastro.hidden = false;
+    $("#formLoginAluno").hidden = true;
+    $("#formCadastroAluno").hidden = false;
 
     clearError("erroLoginAluno");
     clearError("erroCadastroAluno");
@@ -239,6 +233,11 @@
       isPostVisible(post, currentStudent)
     );
   }
+
+  /*
+   * Carrega publicações gerais, para alunos
+   * e direcionadas especificamente à turma.
+   */
 
   async function loadPosts() {
     console.log("[SchoolLink] Iniciando loadPosts.");
@@ -1035,8 +1034,6 @@
 
       const button = e.submitter;
 
-      if (!button) return;
-
       button.disabled = true;
       button.textContent = "Criando conta...";
 
@@ -1136,8 +1133,6 @@
 
       const button = e.submitter;
 
-      if (!button) return;
-
       button.disabled = true;
       button.textContent = "Entrando...";
 
@@ -1192,9 +1187,7 @@
           turma: getTurmaId(data)
         };
 
-        console.log(
-          "[SchoolLink] Iniciando carregamento das publicações..."
-        );
+        console.log("[SchoolLink] Iniciando carregamento das publicações...");
 
         await loadPosts();
 
@@ -1274,9 +1267,7 @@
           turma: getTurmaId(data)
         };
 
-        console.log(
-          "[SchoolLink] Iniciando consulta das publicações..."
-        );
+        console.log("[SchoolLink] Iniciando consulta das publicações...");
 
         await loadPosts();
 
