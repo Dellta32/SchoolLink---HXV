@@ -1860,6 +1860,8 @@ body.area-imagem-aberta {
    BOTÃO FLUTUANTE — VOLTAR AO TOPO
 ========================================= */
 
+
+/* Botão voltar ao topo */
 #btnVoltarTopo {
   display: none;
 }
@@ -1867,10 +1869,7 @@ body.area-imagem-aberta {
 @media (max-width: 768px) {
   #btnVoltarTopo {
     position: fixed;
-
     right: 18px;
-
-    /* Mantém o botão acima da navegação mobile */
     bottom: calc(88px + env(safe-area-inset-bottom));
 
     width: 48px;
@@ -1880,40 +1879,49 @@ body.area-imagem-aberta {
     align-items: center;
     justify-content: center;
 
-    border: 1px solid rgba(255,255,255,.15);
+    border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 50%;
 
     background: #071936;
     color: #fff;
 
-    box-shadow: 0 5px 18px rgba(0,0,0,.22);
+    box-shadow: 0 5px 18px rgba(0, 0, 0, 0.22);
 
     cursor: pointer;
+    z-index: 999;
 
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
 
-    transform: translateY(12px);
+    transform: translateY(18px) scale(0.75);
 
     transition:
-      opacity .25s ease,
-      transform .25s ease,
-      visibility .25s ease,
-      background .2s ease;
-
-    z-index: 999;
+      opacity 0.3s ease,
+      transform 0.4s cubic-bezier(.2, .8, .2, 1),
+      visibility 0.3s ease,
+      background 0.2s ease;
   }
 
   #btnVoltarTopo.is-visible {
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
+  }
+
+  #btnVoltarTopo svg {
+    width: 23px;
+    height: 23px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
   }
 
   #btnVoltarTopo:active {
-    transform: scale(.92);
+    transform: scale(0.9);
     background: #12315e;
   }
 }
