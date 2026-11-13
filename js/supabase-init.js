@@ -43,11 +43,12 @@
     "#schoollinkSupabaseStatus, #schoollinkServiceIndicators"
   ).forEach(element => element.remove());
 
-})();
-
-// Remove o contêiner antigo de indicadores duplicados.
+  // Remove o contêiner antigo de indicadores duplicados.
 document.querySelectorAll(
   ".area-docente__status-servicos"
 ).forEach(element => {
   element.remove();
 });
+
+})();
+
