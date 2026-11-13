@@ -352,64 +352,125 @@
 
   // ANEXOS DAS PUBLICAÇÕES
 
-  function renderAttachments(arquivos) {
-    if (!Array.isArray(arquivos) || !arquivos.length) {
-      return "";
-    }
+ 
+function renderAttachments(arquivos) {
+  if (!Array.isArray(arquivos) || !arquivos.length) {
+    return "";
+  }
 
-    return `
-      <div class="area-anexos">
-        ${arquivos.map(arquivo => {
-          const nome = escapeHtml(
-            arquivo.nome || "Arquivo"
+  return `
+    <div class="area-anexos">
+      ${arquivos.map(arquivo => {
+        const nome = escapeHtml(
+          arquivo.nome || "Arquivo"
+        );
+
+        const tipo = String(
+          arquivo.tipo || ""
+        ).toLowerCase().trim();
+
+        const url = String(
+          arquivo.url || ""
+        ).trim();
+
+        if (!/^https?:\/\//i.test(url)) {
+          console.warn(
+            "[SchoolLink] Anexo sem URL válida:",
+            arquivo
           );
+          return "";
+        }
 
-          const tipo = String(
-            arquivo.tipo || ""
-          ).toLowerCase();
+        const safeUrl = escapeHtml(url);
 
-          const url = String(
-            arquivo.url || ""
-          ).trim();
+        const extensao = (
+          arquivo.nome || ""
+        ).split(".").pop().toLowerCase();
 
-          // Aceita somente URLs HTTP ou HTTPS.
-          if (!/^https?:\/\//i.test(url)) {
-            console.warn(
-              "[SchoolLink] Anexo sem URL válida:",
-              arquivo.nome
-            );
-            return "";
-          }
+        const isImage =
+          tipo.startsWith("image/") ||
+          [
+            "png", "jpg", "jpeg", "webp",
+            "gif", "svg", "avif", "bmp"
+          ].includes(extensao);
 
-          const safeUrl = escapeHtml(url);
-
-          // IMAGENS
-
-          if (tipo.startsWith("image/")) {
-            return `
-              <div class="area-anexo area-anexo--imagem">
-
-                <button
-                  type="button"
-                  class="area-anexo__visualizar"
-                  data-image-url="${safeUrl}"
-                  data-image-name="${nome}"
-                  aria-label="Expandir imagem ${nome}"
+        if (isImage) {
+          return `
+            <div class="area-anexo area-anexo--imagem">
+              <button
+                type="button"
+                class="area-anexo__visualizar"
+                data-image-url="${safeUrl}"
+                data-image-name="${nome}"
+                aria-label="Expandir imagem ${nome}"
+              >
+                <img
+                  src="${safeUrl}"
+                  alt="${nome}"
+                  loading="lazy"
+                  onerror="this.classList.add('imagem-com-erro'); console.error('[SchoolLink] Falha ao carregar imagem:', this.src)"
                 >
-                  <img
-                    src="${safeUrl}"
-                    alt="${nome}"
-                    loading="lazy"
-                  >
-                </button>
+              </button>
 
-                <span class="area-anexo__nome">
-                  ${nome}
-                </span>
+              <span class="area-anexo__nome">
+                ${nome}
+              </span>
+            </div>
+          `;
+        }
 
-              </div>
-            `;
-          }
+        const isPdf =
+          tipo === "application/pdf" ||
+          extensao === "pdf";
+
+        const isPptx =
+          tipo.includes("presentation") ||
+          extensao === "pptx";
+
+        const formato = isPdf
+          ? "PDF"
+          : isPptx
+            ? "PPTX"
+            : "ARQUIVO";
+
+        return `
+          <div class="area-anexo area-anexo--arquivo">
+            <a
+              class="area-anexo__abrir"
+              href="${safeUrl}"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Abrir arquivo ${nome}"
+            >
+              <span class="area-anexo__icone">
+                ${formato}
+              </span>
+
+              <span class="area-anexo__nome">
+                ${nome}
+              </span>
+
+              <span aria-hidden="true">↗</span>
+            </a>
+
+            <button
+              type="button"
+              class="area-anexo__download"
+              data-download-url="${safeUrl}"
+              data-download-name="${nome}"
+              aria-label="Baixar ${nome}"
+              title="Baixar arquivo"
+            >
+              <span aria-hidden="true">↓</span>
+              <span>Baixar</span>
+            </button>
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
 
           // PDF E OUTROS ARQUIVOS
 
