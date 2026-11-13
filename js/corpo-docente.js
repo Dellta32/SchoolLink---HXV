@@ -81,6 +81,10 @@
     );
   }
 
+  function removeServiceStatus() {
+    $("#schoollinkServiceStatus")?.remove();
+  }
+
   function addServiceStatusStyles() {
     if ($("#schoollinkServiceStatusStyles")) return;
 
@@ -171,17 +175,6 @@
     document.head.appendChild(style);
   }
 
-  /*
-   * POSICIONAMENTO CORRIGIDO:
-   *
-   * O indicador fica dentro do bloco de introdução
-   * do painel docente, abaixo do parágrafo.
-   *
-   * Não procura nav, header, mobile-nav ou navbar.
-   * Assim, não depende da estrutura da navegação
-   * desktop ou mobile.
-   */
-
   function getServiceStatusPosition() {
     const topo = $("#painelDocente .area-docente__topo");
     if (!topo) return null;
@@ -209,18 +202,25 @@
   }
 
   function updateServiceStatus() {
+    // Só exibe o indicador para uma conta autorizada.
+    const user = window.schoollinkAuth?.currentUser;
+
+    if (
+      !user ||
+      !authorizedUid ||
+      authorizedUid !== user.uid ||
+      $("#painelDocente")?.hidden
+    ) {
+      removeServiceStatus();
+      return;
+    }
+
     addServiceStatusStyles();
 
     const status = createServiceStatus();
     const position = getServiceStatusPosition();
 
     if (!position) return;
-
-    /*
-     * Insere o indicador no bloco de introdução.
-     * appendChild garante que fique abaixo do título
-     * e do parágrafo, independentemente da navbar.
-     */
 
     if (status.parentNode !== position.parent) {
       position.parent.appendChild(status);
@@ -699,6 +699,9 @@
     authorizedUid = null;
     posts = [];
 
+    // Remove o indicador quando o acesso é negado.
+    removeServiceStatus();
+
     $("#painelLoginDocente").hidden = true;
     $("#painelDocente").hidden = true;
     $("#btnSairDocente").hidden = true;
@@ -724,6 +727,9 @@
     const currentCheck = ++authCheckId;
 
     authorizedUid = null;
+
+    // Não exibe status enquanto a autorização está sendo verificada.
+    removeServiceStatus();
 
     $("#painelLoginDocente").hidden = true;
     $("#painelDocente").hidden = true;
@@ -801,6 +807,7 @@
     $("#painelDocente").hidden = false;
     $("#btnSairDocente").hidden = false;
 
+    // O indicador só é criado após a autorização.
     updateServiceStatus();
 
     refreshPosts().catch(error => {
@@ -815,6 +822,9 @@
   async function exit() {
     authorizedUid = null;
     posts = [];
+
+    // Remove o indicador ao sair.
+    removeServiceStatus();
 
     try {
       await window.schoollinkAuth.signOut();
@@ -1343,6 +1353,9 @@
   $("#painelDocente").hidden = true;
   $("#btnSairDocente").hidden = true;
 
+  // Garante que não exista indicador antes da autorização.
+  removeServiceStatus();
+
   createAccessDeniedPanel();
 
   window.schoollinkAuth?.onAuthStateChanged(user => {
@@ -1352,6 +1365,9 @@
     posts = [];
 
     if (!user) {
+      // Remove o indicador quando não existe sessão.
+      removeServiceStatus();
+
       clearAccessDenied();
 
       $("#painelLoginDocente").hidden = false;
@@ -1370,7 +1386,9 @@
 
   initializeTurmas();
 
-  updateServiceStatus();
+  // Não chamar updateServiceStatus() aqui.
+  // O indicador só aparece dentro de enter(user),
+  // depois da autorização do professor ou gestor.
 
   if (!ready()) {
     const note = $(".area-form__nota");
