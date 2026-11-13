@@ -175,16 +175,22 @@
   }
 
   function showLogin() {
-    $("#formLoginAluno").hidden = false;
-    $("#formCadastroAluno").hidden = true;
+    const login = $("#formLoginAluno");
+    const cadastro = $("#formCadastroAluno");
+
+    if (login) login.hidden = false;
+    if (cadastro) cadastro.hidden = true;
 
     clearError("erroLoginAluno");
     clearError("erroCadastroAluno");
   }
 
   function showRegister() {
-    $("#formLoginAluno").hidden = true;
-    $("#formCadastroAluno").hidden = false;
+    const login = $("#formLoginAluno");
+    const cadastro = $("#formCadastroAluno");
+
+    if (login) login.hidden = true;
+    if (cadastro) cadastro.hidden = false;
 
     clearError("erroLoginAluno");
     clearError("erroCadastroAluno");
@@ -233,11 +239,6 @@
       isPostVisible(post, currentStudent)
     );
   }
-
-  /*
-   * Carrega publicações gerais, para alunos
-   * e direcionadas especificamente à turma.
-   */
 
   async function loadPosts() {
     console.log("[SchoolLink] Iniciando loadPosts.");
@@ -352,135 +353,79 @@
 
   // ANEXOS DAS PUBLICAÇÕES
 
- 
-function renderAttachments(arquivos) {
-  if (!Array.isArray(arquivos) || !arquivos.length) {
-    return "";
-  }
+  function renderAttachments(arquivos) {
+    if (!Array.isArray(arquivos) || !arquivos.length) {
+      return "";
+    }
 
-  return `
-    <div class="area-anexos">
-      ${arquivos.map(arquivo => {
-        const nome = escapeHtml(
-          arquivo.nome || "Arquivo"
-        );
-
-        const tipo = String(
-          arquivo.tipo || ""
-        ).toLowerCase().trim();
-
-        const url = String(
-          arquivo.url || ""
-        ).trim();
-
-        if (!/^https?:\/\//i.test(url)) {
-          console.warn(
-            "[SchoolLink] Anexo sem URL válida:",
-            arquivo
+    return `
+      <div class="area-anexos">
+        ${arquivos.map(arquivo => {
+          const nome = escapeHtml(
+            arquivo.nome || "Arquivo"
           );
-          return "";
-        }
 
-        const safeUrl = escapeHtml(url);
+          const tipo = String(
+            arquivo.tipo || ""
+          ).toLowerCase().trim();
 
-        const extensao = (
-          arquivo.nome || ""
-        ).split(".").pop().toLowerCase();
+          const url = String(
+            arquivo.url || ""
+          ).trim();
 
-        const isImage =
-          tipo.startsWith("image/") ||
-          [
-            "png", "jpg", "jpeg", "webp",
-            "gif", "svg", "avif", "bmp"
-          ].includes(extensao);
+          if (!/^https?:\/\//i.test(url)) {
+            console.warn(
+              "[SchoolLink] Anexo sem URL válida:",
+              arquivo
+            );
+            return "";
+          }
 
-        if (isImage) {
-          return `
-            <div class="area-anexo area-anexo--imagem">
-              <button
-                type="button"
-                class="area-anexo__visualizar"
-                data-image-url="${safeUrl}"
-                data-image-name="${nome}"
-                aria-label="Expandir imagem ${nome}"
-              >
-                <img
-                  src="${safeUrl}"
-                  alt="${nome}"
-                  loading="lazy"
-                  onerror="this.classList.add('imagem-com-erro'); console.error('[SchoolLink] Falha ao carregar imagem:', this.src)"
+          const safeUrl = escapeHtml(url);
+
+          const extensao = (
+            arquivo.nome || ""
+          ).split(".").pop().toLowerCase();
+
+          const isImage =
+            tipo.startsWith("image/") ||
+            [
+              "png", "jpg", "jpeg", "webp",
+              "gif", "svg", "avif", "bmp"
+            ].includes(extensao);
+
+          if (isImage) {
+            return `
+              <div class="area-anexo area-anexo--imagem">
+                <button
+                  type="button"
+                  class="area-anexo__visualizar"
+                  data-image-url="${safeUrl}"
+                  data-image-name="${nome}"
+                  aria-label="Expandir imagem ${nome}"
                 >
-              </button>
+                  <img
+                    src="${safeUrl}"
+                    alt="${nome}"
+                    loading="lazy"
+                    onerror="this.classList.add('imagem-com-erro'); console.error('[SchoolLink] Falha ao carregar imagem:', this.src)"
+                  >
+                </button>
 
-              <span class="area-anexo__nome">
-                ${nome}
-              </span>
-            </div>
-          `;
-        }
-
-        const isPdf =
-          tipo === "application/pdf" ||
-          extensao === "pdf";
-
-        const isPptx =
-          tipo.includes("presentation") ||
-          extensao === "pptx";
-
-        const formato = isPdf
-          ? "PDF"
-          : isPptx
-            ? "PPTX"
-            : "ARQUIVO";
-
-        return `
-          <div class="area-anexo area-anexo--arquivo">
-            <a
-              class="area-anexo__abrir"
-              href="${safeUrl}"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Abrir arquivo ${nome}"
-            >
-              <span class="area-anexo__icone">
-                ${formato}
-              </span>
-
-              <span class="area-anexo__nome">
-                ${nome}
-              </span>
-
-              <span aria-hidden="true">↗</span>
-            </a>
-
-            <button
-              type="button"
-              class="area-anexo__download"
-              data-download-url="${safeUrl}"
-              data-download-name="${nome}"
-              aria-label="Baixar ${nome}"
-              title="Baixar arquivo"
-            >
-              <span aria-hidden="true">↓</span>
-              <span>Baixar</span>
-            </button>
-          </div>
-        `;
-      }).join("")}
-    </div>
-  `;
-}
-
-
-          // PDF E OUTROS ARQUIVOS
+                <span class="area-anexo__nome">
+                  ${nome}
+                </span>
+              </div>
+            `;
+          }
 
           const isPdf =
             tipo === "application/pdf" ||
-            nome.toLowerCase().endsWith(".pdf");
+            extensao === "pdf";
 
           const isPptx =
             tipo.includes("presentation") ||
-            nome.toLowerCase().endsWith(".pptx");
+            extensao === "pptx";
 
           const formato = isPdf
             ? "PDF"
@@ -490,7 +435,6 @@ function renderAttachments(arquivos) {
 
           return `
             <div class="area-anexo area-anexo--arquivo">
-
               <a
                 class="area-anexo__abrir"
                 href="${safeUrl}"
@@ -498,7 +442,6 @@ function renderAttachments(arquivos) {
                 rel="noopener noreferrer"
                 aria-label="Abrir arquivo ${nome}"
               >
-
                 <span class="area-anexo__icone">
                   ${formato}
                 </span>
@@ -508,7 +451,6 @@ function renderAttachments(arquivos) {
                 </span>
 
                 <span aria-hidden="true">↗</span>
-
               </a>
 
               <button
@@ -522,7 +464,6 @@ function renderAttachments(arquivos) {
                 <span aria-hidden="true">↓</span>
                 <span>Baixar</span>
               </button>
-
             </div>
           `;
         }).join("")}
@@ -1094,6 +1035,8 @@ function renderAttachments(arquivos) {
 
       const button = e.submitter;
 
+      if (!button) return;
+
       button.disabled = true;
       button.textContent = "Criando conta...";
 
@@ -1193,6 +1136,8 @@ function renderAttachments(arquivos) {
 
       const button = e.submitter;
 
+      if (!button) return;
+
       button.disabled = true;
       button.textContent = "Entrando...";
 
@@ -1247,7 +1192,9 @@ function renderAttachments(arquivos) {
           turma: getTurmaId(data)
         };
 
-        console.log("[SchoolLink] Iniciando carregamento das publicações...");
+        console.log(
+          "[SchoolLink] Iniciando carregamento das publicações..."
+        );
 
         await loadPosts();
 
@@ -1327,7 +1274,9 @@ function renderAttachments(arquivos) {
           turma: getTurmaId(data)
         };
 
-        console.log("[SchoolLink] Iniciando consulta das publicações...");
+        console.log(
+          "[SchoolLink] Iniciando consulta das publicações..."
+        );
 
         await loadPosts();
 
