@@ -1,5 +1,7 @@
+
 /* SchoolLink HXV — Área do aluno
  * Firebase Authentication + Firestore
+ * Supabase Storage: imagens e arquivos das publicações.
  * Tarefas pessoais: localStorage por UID.
  */
 (() => {
@@ -348,6 +350,106 @@
     return icons[type] || "•";
   }
 
+  // ANEXOS DAS PUBLICAÇÕES
+
+  function renderAttachments(arquivos) {
+    if (!Array.isArray(arquivos) || !arquivos.length) {
+      return "";
+    }
+
+    return `
+      <div class="area-anexos">
+        ${arquivos.map(arquivo => {
+          const nome = escapeHtml(
+            arquivo.nome || "Arquivo"
+          );
+
+          const tipo = String(
+            arquivo.tipo || ""
+          ).toLowerCase();
+
+          const url = String(
+            arquivo.url || ""
+          ).trim();
+
+          // Aceita somente URLs HTTP ou HTTPS.
+          if (!/^https?:\/\//i.test(url)) {
+            console.warn(
+              "[SchoolLink] Anexo sem URL válida:",
+              arquivo.nome
+            );
+            return "";
+          }
+
+          const safeUrl = escapeHtml(url);
+
+          // IMAGENS
+
+          if (tipo.startsWith("image/")) {
+            return `
+              <div class="area-anexo area-anexo--imagem">
+
+                <a
+                  href="${safeUrl}"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Abrir imagem ${nome}"
+                >
+                  <img
+                    src="${safeUrl}"
+                    alt="${nome}"
+                    loading="lazy"
+                  >
+                </a>
+
+                <span>${nome}</span>
+
+              </div>
+            `;
+          }
+
+          // PDF E OUTROS ARQUIVOS
+
+          const isPdf =
+            tipo === "application/pdf" ||
+            nome.toLowerCase().endsWith(".pdf");
+
+          const isPptx =
+            tipo.includes("presentation") ||
+            nome.toLowerCase().endsWith(".pptx");
+
+          const formato = isPdf
+            ? "PDF"
+            : isPptx
+              ? "PPTX"
+              : "ARQUIVO";
+
+          return `
+            <a
+              class="area-anexo area-anexo--arquivo"
+              href="${safeUrl}"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Abrir arquivo ${nome}"
+            >
+
+              <span class="area-anexo__icone">
+                ${formato}
+              </span>
+
+              <span class="area-anexo__nome">
+                ${nome}
+              </span>
+
+              <span aria-hidden="true">↗</span>
+
+            </a>
+          `;
+        }).join("")}
+      </div>
+    `;
+  }
+
   // CARTÃO DE PUBLICAÇÃO
 
   function postCard(post) {
@@ -362,16 +464,21 @@
 
     return `
       <article class="area-lista__item">
+
         <span class="area-lista__marcador">
           ${postIcon(post.tipo)}
         </span>
 
         <div class="area-lista__corpo">
+
           <h3>${escapeHtml(post.titulo)}</h3>
 
           <p>${escapeHtml(post.descricao)}</p>
 
+          ${renderAttachments(post.arquivos)}
+
           <div class="area-lista__meta">
+
             <span class="area-tag ${
               post.tipo === "Atividade"
                 ? "area-tag--atividade"
@@ -381,8 +488,11 @@
             <span>${escapeHtml(post.disciplina || "Geral")}</span>
 
             ${due}
+
           </div>
+
         </div>
+
       </article>
     `;
   }
@@ -510,15 +620,19 @@
         <article class="area-conteudo">
 
           <div class="area-conteudo__topo">
+
             <span class="area-conteudo__icone">▤</span>
 
             <div>
               <h3>${escapeHtml(p.titulo)}</h3>
               <p>${escapeHtml(p.disciplina || "Geral")}</p>
             </div>
+
           </div>
 
           <p>${escapeHtml(p.descricao)}</p>
+
+          ${renderAttachments(p.arquivos)}
 
           <div class="area-conteudo__rodape">
             <span>Publicado no SchoolLink</span>
