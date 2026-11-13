@@ -1854,3 +1854,72 @@ body.area-imagem-aberta {
     align-items: flex-start;
   }
 }
+
+
+/* =========================================
+   BOTÃO FLUTUANTE — VOLTAR AO TOPO
+========================================= */
+
+#btnVoltarTopo {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  #btnVoltarTopo {
+    position: fixed;
+
+    right: 18px;
+
+    /* Mantém o botão acima da navegação mobile */
+    bottom: calc(88px + env(safe-area-inset-bottom));
+
+    width: 48px;
+    height: 48px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border: 1px solid rgba(255,255,255,.15);
+    border-radius: 50%;
+
+    background: #071936;
+    color: #fff;
+
+    box-shadow: 0 5px 18px rgba(0,0,0,.22);
+
+    cursor: pointer;
+
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+
+    transform: translateY(12px);
+
+    transition:
+      opacity .25s ease,
+      transform .25s ease,
+      visibility .25s ease,
+      background .2s ease;
+
+    z-index: 999;
+  }
+
+  #btnVoltarTopo.is-visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+
+  #btnVoltarTopo:active {
+    transform: scale(.92);
+    background: #12315e;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #btnVoltarTopo {
+    transition: none;
+  }
+}
