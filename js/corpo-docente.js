@@ -92,13 +92,12 @@
         box-sizing: border-box;
         display: flex;
         align-items: center;
-        justify-content: flex-end;
+        justify-content: flex-start;
         flex-wrap: wrap;
         gap: 10px 20px;
         width: 100%;
-        max-width: 1100px;
-        margin: 18px auto 24px;
-        padding: 12px 18px;
+        margin: 18px 0 0;
+        padding: 12px 16px;
         border: 1px solid rgba(128,128,128,.18);
         border-radius: 12px;
         background: var(--cor-superficie, #fff);
@@ -141,12 +140,17 @@
         opacity: .75;
       }
 
+      /* Remove o indicador antigo que mostrava apenas Firebase */
+      #painelDocente .area-docente__topo > .area-status {
+        display: none !important;
+      }
+
       @media (max-width: 768px) {
         #schoollinkServiceStatus {
-          justify-content: center;
+          justify-content: flex-start;
           gap: 12px 18px;
-          width: calc(100% - 28px);
-          margin: 14px auto 20px;
+          width: 100%;
+          margin: 16px 0 0;
           padding: 12px;
           font-size: 12px;
         }
@@ -167,36 +171,27 @@
     document.head.appendChild(style);
   }
 
+  /*
+   * POSICIONAMENTO CORRIGIDO:
+   *
+   * O indicador fica dentro do bloco de introdução
+   * do painel docente, abaixo do parágrafo.
+   *
+   * Não procura nav, header, mobile-nav ou navbar.
+   * Assim, não depende da estrutura da navegação
+   * desktop ou mobile.
+   */
+
   function getServiceStatusPosition() {
-    const painel = $("#painelDocente");
+    const topo = $("#painelDocente .area-docente__topo");
+    if (!topo) return null;
 
-    if (!painel) return null;
+    const intro = topo.querySelector(":scope > div");
 
-    /*
-     * Procura a navegação do painel.
-     * O indicador será colocado DEPOIS dela,
-     * nunca dentro da navbar.
-     */
-    const nav = painel.querySelector(
-      "nav, [role='navigation'], .area-nav, .area-navbar"
-    );
+    if (!intro) return null;
 
-    if (nav) {
-      const header = nav.closest("header");
-
-      return {
-        parent: (header || nav).parentNode,
-        reference: header || nav
-      };
-    }
-
-    /*
-     * Caso não exista uma navbar identificável,
-     * coloca o indicador no início do painel.
-     */
     return {
-      parent: painel,
-      reference: painel.firstElementChild
+      parent: intro
     };
   }
 
@@ -222,24 +217,15 @@
     if (!position) return;
 
     /*
-     * Reposiciona o elemento caso ele tenha sido
-     * colocado anteriormente em outro local.
+     * Insere o indicador no bloco de introdução.
+     * appendChild garante que fique abaixo do título
+     * e do parágrafo, independentemente da navbar.
      */
-    if (
-      status.parentNode !== position.parent ||
-      (
-        position.reference &&
-        status.previousElementSibling !== position.reference
-      )
-    ) {
-      if (position.reference) {
-        position.parent.insertBefore(
-          status,
-          position.reference.nextSibling
-        );
-      } else {
-        position.parent.appendChild(status);
-      }
+
+    if (status.parentNode !== position.parent) {
+      position.parent.appendChild(status);
+    } else if (position.parent.lastElementChild !== status) {
+      position.parent.appendChild(status);
     }
 
     const services = [
