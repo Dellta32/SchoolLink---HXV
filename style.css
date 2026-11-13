@@ -1521,3 +1521,180 @@ body:not(.home-page) main>h1 {
 .portal-grid h3 {
   font-size: 12px;
 }
+
+
+/* ============================================================
+   SCHOOLLINK HXV — ÁREA DO ALUNO
+   ANEXOS DAS PUBLICAÇÕES — DESKTOP
+   ============================================================ */
+
+.area-anexos {
+  display: grid;
+  gap: 14px;
+  width: 100%;
+  margin: 16px 0;
+}
+
+/* IMAGENS */
+
+.area-anexo--imagem {
+  width: 100%;
+  max-width: 540px;
+}
+
+.area-anexo--imagem a {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: #edf1f7;
+  transition: box-shadow .2s, transform .2s;
+}
+
+.area-anexo--imagem a:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+.area-anexo--imagem img {
+  display: block;
+  width: 100%;
+  max-width: 540px;
+  max-height: 430px;
+  object-fit: contain;
+  background: #edf1f7;
+}
+
+.area-anexo--imagem > span {
+  display: block;
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+/* ARQUIVOS PDF E PPTX */
+
+.area-anexo--arquivo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: fit-content;
+  max-width: 100%;
+  min-height: 64px;
+  padding: 11px 15px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 3px 12px rgba(15, 31, 57, .035);
+  transition:
+    border-color .2s,
+    transform .2s,
+    box-shadow .2s;
+}
+
+.area-anexo--arquivo:hover {
+  border-color: #aab9d2;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+.area-anexo__icone {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 43px;
+  height: 43px;
+  border-radius: 10px;
+  background: var(--soft-blue);
+  color: var(--navy);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.area-anexo__nome {
+  min-width: 0;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.area-anexo--arquivo > span:last-child {
+  flex-shrink: 0;
+  color: var(--red);
+  font-size: 17px;
+  font-weight: 700;
+}
+
+
+/* ============================================================
+   ÁREA DO ALUNO — MOBILE
+   ============================================================ */
+
+@media (max-width: 900px) {
+
+  .area-anexos {
+    gap: 11px;
+    margin: 13px 0;
+  }
+
+  .area-anexo--imagem {
+    max-width: 100%;
+  }
+
+  .area-anexo--imagem img {
+    max-height: 320px;
+  }
+
+  .area-anexo--imagem > span {
+    font-size: 10px;
+  }
+
+  .area-anexo--arquivo {
+    width: 100%;
+    min-height: 58px;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+  }
+
+  .area-anexo__icone {
+    width: 38px;
+    height: 38px;
+    font-size: 9px;
+  }
+
+  .area-anexo__nome {
+    font-size: 11px;
+  }
+}
+
+
+/* ============================================================
+   ÁREA DO ALUNO — TELAS MUITO PEQUENAS
+   ============================================================ */
+
+@media (max-width: 370px) {
+
+  .area-anexo--imagem img {
+    max-height: 250px;
+  }
+
+  .area-anexo--arquivo {
+    gap: 8px;
+    padding: 9px;
+  }
+
+  .area-anexo__icone {
+    width: 34px;
+    height: 34px;
+  }
+
+  .area-anexo__nome {
+    font-size: 10px;
+  }
+}
