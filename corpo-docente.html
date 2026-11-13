@@ -24,7 +24,7 @@
   <script src="supabase-config.js"></script>
   <script src="js/supabase-init.js"></script>
 
-  <!-- Catálogo de turmas: carregar antes do corpo docente -->
+  <!-- Catálogo de turmas -->
   <script src="js/turmas.js" defer></script>
   <script src="js/corpo-docente.js" defer></script>
 </head>
@@ -32,7 +32,6 @@
 <body class="corpo-docente-page">
 
   <!-- CABEÇALHO -->
-
   <header class="site-header">
     <nav class="site-nav" aria-label="Navegação principal">
 
@@ -84,11 +83,9 @@
   </header>
 
   <!-- CONTEÚDO PRINCIPAL -->
-
   <main class="area-docente">
 
     <!-- LOGIN -->
-
     <section
       class="area-docente__login"
       id="painelLoginDocente"
@@ -198,7 +195,6 @@
     </section>
 
     <!-- PAINEL DOCENTE -->
-
     <section
       class="area-docente__app"
       id="painelDocente"
@@ -221,15 +217,34 @@
 
         </div>
 
-        <span class="area-status">
-          <span></span>
-          Conexão Firebase
-        </span>
+        <!-- INDICADORES DOS SERVIÇOS -->
+        <div class="area-docente__status-servicos">
+
+          <span class="area-status" id="statusFirebase">
+            <span class="status-indicador"></span>
+            Firebase
+          </span>
+
+          <span
+            class="area-status status-supabase"
+            id="statusSupabase"
+            data-status="checking"
+          >
+            <span
+              class="status-indicador"
+              id="statusSupabaseIndicador"
+            ></span>
+
+            <span id="statusSupabaseTexto">
+              Verificando Supabase...
+            </span>
+          </span>
+
+        </div>
 
       </div>
 
       <!-- ABAS -->
-
       <div
         class="area-tabs"
         role="tablist"
@@ -258,7 +273,6 @@
       </div>
 
       <!-- NOVA PUBLICAÇÃO -->
-
       <section
         class="area-secao is-visible"
         id="doc-secao-publicar"
@@ -275,35 +289,29 @@
             <div class="area-card__cabecalho">
 
               <div>
-
                 <span class="area-eyebrow">
                   EDITOR DE CONTEÚDO
                 </span>
 
                 <h2>Nova publicação</h2>
-
               </div>
 
             </div>
 
             <!-- TIPO -->
-
             <label for="tipoPublicacao">
               Tipo de publicação
             </label>
 
             <select id="tipoPublicacao" required>
-
               <option value="Anúncio">Anúncio</option>
               <option value="Evento">Evento</option>
               <option value="Comunicado">Comunicado</option>
               <option value="Conteúdo">Conteúdo</option>
               <option value="Atividade">Atividade</option>
-
             </select>
 
             <!-- TÍTULO -->
-
             <label for="tituloPublicacao">
               Título
             </label>
@@ -316,7 +324,6 @@
             >
 
             <!-- DESCRIÇÃO -->
-
             <label for="descricaoPublicacao">
               Descrição
             </label>
@@ -330,27 +337,21 @@
             ></textarea>
 
             <!-- IMPORTÂNCIA E DATA -->
-
             <div class="area-form-grid">
 
               <div>
-
                 <label for="importanciaPublicacao">
                   Importância
                 </label>
 
                 <select id="importanciaPublicacao">
-
                   <option value="normal">Normal</option>
                   <option value="importante">Importante</option>
                   <option value="urgente">Urgente</option>
-
                 </select>
-
               </div>
 
               <div>
-
                 <label for="dataPublicacao">
                   Data do evento/prazo
                 </label>
@@ -359,13 +360,11 @@
                   id="dataPublicacao"
                   type="date"
                 >
-
               </div>
 
             </div>
 
             <!-- DESTINATÁRIOS -->
-
             <fieldset class="area-fieldset">
 
               <legend>
@@ -373,46 +372,36 @@
               </legend>
 
               <label class="area-check">
-
                 <input
                   type="radio"
                   name="destinatario"
                   value="todos"
                   checked
                 >
-
                 Toda a comunidade escolar
-
               </label>
 
               <label class="area-check">
-
                 <input
                   type="radio"
                   name="destinatario"
                   value="alunos"
                 >
-
                 Estudantes
-
               </label>
 
               <label class="area-check">
-
                 <input
                   type="radio"
                   name="destinatario"
                   value="turmas"
                 >
-
                 Turmas específicas
-
               </label>
 
             </fieldset>
 
             <!-- TURMAS DINÂMICAS -->
-
             <div
               id="blocoTurmas"
               class="area-turmas"
@@ -436,7 +425,6 @@
             </div>
 
             <!-- ANEXOS -->
-
             <label for="arquivosPublicacao">
               Anexos (imagem, PDF ou PPTX)
             </label>
@@ -459,7 +447,6 @@
             ></div>
 
             <!-- ERROS -->
-
             <p
               class="area-form__erro"
               id="erroPublicacao"
@@ -468,7 +455,6 @@
             ></p>
 
             <!-- AÇÕES -->
-
             <div class="area-form__acoes">
 
               <button
@@ -490,21 +476,16 @@
           </form>
 
           <!-- PRÉ-VISUALIZAÇÃO -->
-
           <aside class="area-card area-preview">
 
             <div class="area-card__cabecalho">
-
               <div>
-
                 <span class="area-eyebrow">
                   PRÉ-VISUALIZAÇÃO
                 </span>
 
                 <h2>Como ficará no portal</h2>
-
               </div>
-
             </div>
 
             <article class="area-preview__post">
@@ -554,12 +535,9 @@
             </article>
 
             <div class="area-preview__dica">
-
               <strong>Dica:</strong>
-
               use títulos objetivos, informe prazos
               e confirme o público antes de publicar.
-
             </div>
 
           </aside>
@@ -569,7 +547,6 @@
       </section>
 
       <!-- GERENCIAR PUBLICAÇÕES -->
-
       <section
         class="area-secao"
         id="doc-secao-gerenciar"
@@ -577,9 +554,7 @@
       >
 
         <div class="area-secao__titulo">
-
           <div>
-
             <span class="area-eyebrow">
               CONTEÚDO PUBLICADO
             </span>
@@ -589,13 +564,10 @@
             <p>
               Edite ou arquive publicações armazenadas no Firestore.
             </p>
-
           </div>
-
         </div>
 
         <!-- FILTRO -->
-
         <div class="area-filtros">
 
           <label for="filtroTipoDocente">
@@ -603,20 +575,17 @@
           </label>
 
           <select id="filtroTipoDocente">
-
             <option value="todos">Todos os tipos</option>
             <option>Anúncio</option>
             <option>Evento</option>
             <option>Comunicado</option>
             <option>Conteúdo</option>
             <option>Atividade</option>
-
           </select>
 
         </div>
 
         <!-- LISTA -->
-
         <div
           id="listaPublicacoes"
           class="area-lista area-card"
@@ -625,7 +594,6 @@
       </section>
 
       <!-- AVISO -->
-
       <p class="area-aluno__aviso">
         Publicações armazenadas no Firebase Firestore.
         Anexos enviados pelo Supabase Storage.
@@ -636,7 +604,6 @@
   </main>
 
   <!-- NAVEGAÇÃO MOBILE -->
-
   <nav
     class="mobile-nav"
     aria-label="Navegação mobile"
@@ -689,27 +656,21 @@
   </nav>
 
   <!-- RODAPÉ -->
-
   <footer class="site-footer">
 
     <div class="footer-brand">
-
       <img src="imagens/logo.png" alt="">
 
       <div>
-
         <strong>SchoolLink HXV</strong>
 
         <small>
           CEEP Hélio Xavier de Vasconcelos
         </small>
-
       </div>
-
     </div>
 
     <div>
-
       <strong>Links úteis</strong>
 
       <a href="sobre.html">
@@ -727,7 +688,6 @@
       >
         Instagram da escola
       </a>
-
     </div>
 
     <p>
@@ -735,6 +695,8 @@
     </p>
 
   </footer>
-<script src="js/voltar-topo.js" defer></script>
+
+  <script src="js/voltar-topo.js" defer></script>
+
 </body>
 </html>
