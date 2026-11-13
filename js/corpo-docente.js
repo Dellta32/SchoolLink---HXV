@@ -1,4 +1,3 @@
-
 /* SchoolLink HXV — Corpo docente
  * Dados e sessão exclusivamente no Firebase.
  * Arquivos: Supabase Storage via Edge Function.
