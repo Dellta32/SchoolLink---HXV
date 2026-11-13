@@ -1964,3 +1964,36 @@ body.area-imagem-aberta {
         right: auto !important;
     }
 }
+
+.area-docente__status-servicos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.area-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-indicador {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #9ca3af;
+  flex-shrink: 0;
+}
+
+.status-supabase[data-status="online"] .status-indicador {
+  background: #22c55e;
+}
+
+.status-supabase[data-status="offline"] .status-indicador {
+  background: #ef4444;
+}
+
+.status-supabase[data-status="checking"] .status-indicador {
+  background: #9ca3af;
+}
