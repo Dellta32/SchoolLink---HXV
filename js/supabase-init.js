@@ -1,7 +1,7 @@
 
 /* SchoolLink HXV — Inicialização do Supabase
  * Supabase Storage: imagens e arquivos das publicações.
- * Firebase continua responsável pela autenticação e pelos dados.
+ * Firebase: autenticação e dados.
  */
 (() => {
   "use strict";
@@ -28,7 +28,7 @@
     return;
   }
 
-  // Inicializa o cliente Supabase
+  // Inicialização do cliente
   window.schoollinkSupabase = sdk.createClient(
     config.url,
     config.publishableKey
@@ -37,39 +37,29 @@
   window.schoollinkSupabaseReady = true;
   window.schoollinkSupabaseError = null;
 
-  // INDICADOR DE STATUS
+  // INDICADOR DE STATUS DO SUPABASE
   async function verificarSupabase() {
-    const criarIndicador = () => {
-      let container = document.querySelector(
-        "#schoollinkServiceIndicators"
+    const iniciar = () => {
+      const container = document.querySelector(
+        ".area-docente__status-servicos"
       );
 
       if (!container) {
-        container = document.createElement("div");
-        container.id = "schoollinkServiceIndicators";
-
-        container.style.cssText = `
-          position: fixed;
-          bottom: 15px;
-          left: 15px;
-          z-index: 99999;
-          display: flex;
-          flex-direction: row;
-          align-items: center;
-          flex-wrap: wrap;
-          gap: 8px;
-        `;
-
-        document.body.appendChild(container);
+        console.warn(
+          "[SchoolLink] Container .area-docente__status-servicos não encontrado."
+        );
+        return null;
       }
 
-      let indicador = document.querySelector(
+      let indicador = container.querySelector(
         "#schoollinkSupabaseStatus"
       );
 
       if (!indicador) {
         indicador = document.createElement("div");
+
         indicador.id = "schoollinkSupabaseStatus";
+        indicador.className = "area-status-servico area-status-servico--supabase";
 
         indicador.style.cssText = `
           padding: 10px 14px;
@@ -86,15 +76,17 @@
       return indicador;
     };
 
-    const indicador = document.body
-      ? criarIndicador()
-      : await new Promise(resolve => {
+    const indicador = document.readyState === "loading"
+      ? await new Promise(resolve => {
           document.addEventListener(
             "DOMContentLoaded",
-            () => resolve(criarIndicador()),
+            () => resolve(iniciar()),
             { once: true }
           );
-        });
+        })
+      : iniciar();
+
+    if (!indicador) return;
 
     indicador.textContent = "Verificando Supabase...";
     indicador.style.background = "#333";
@@ -126,9 +118,7 @@
         erro
       );
 
-      indicador.textContent =
-        "Supabase: falha na conexão";
-
+      indicador.textContent = "Supabase: falha na conexão";
       indicador.style.background = "#a52a2a";
     }
   }
