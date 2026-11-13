@@ -3,6 +3,7 @@
  * Dados e sessão exclusivamente no Firebase.
  * Arquivos: Supabase Storage via Edge Function.
  * Turmas: IDs padronizados pelo SchoolLinkTurmas.
+ * Acesso: somente professor/gestor ativo.
  */
 
 (() => {
@@ -17,6 +18,9 @@
   let files = [];
   let editingId = null;
   let posts = [];
+
+  let authorizedUid = null;
+  let authCheckId = 0;
 
   // =========================================
   // CONFIGURAÇÕES E UTILITÁRIOS
@@ -61,6 +65,76 @@
 
   function firebaseReady() {
     return ready();
+  }
+
+  // =========================================
+  // STATUS VISUAL DOS SERVIÇOS
+  // =========================================
+
+  function getSupabaseReady() {
+    const config = window.SCHOOLLINK_SUPABASE_CONFIG;
+
+    return Boolean(
+      window.schoollinkSupabaseReady &&
+      config?.url &&
+      config?.publishableKey
+    );
+  }
+
+  function updateServiceStatus() {
+    const status = $(".area-status");
+
+    if (!status) return;
+
+    const services = [
+      {
+        name: "Firebase",
+        ready: firebaseReady()
+      },
+      {
+        name: "Supabase",
+        ready: getSupabaseReady()
+      }
+    ];
+
+    status.innerHTML = services.map(service => `
+      <span
+        class="schoollink-service-status"
+        style="
+          display:inline-flex;
+          align-items:center;
+          gap:6px;
+          margin-right:14px;
+          font-size:13px;
+          white-space:nowrap;
+        "
+        title="${service.name}: ${
+          service.ready ? "Inicializado" : "Não inicializado"
+        }"
+      >
+        <span
+          aria-hidden="true"
+          style="
+            display:inline-block;
+            width:9px;
+            height:9px;
+            border-radius:50%;
+            background:${service.ready ? "#22c55e" : "#ef4444"};
+            box-shadow:0 0 0 3px ${
+              service.ready
+                ? "rgba(34,197,94,.13)"
+                : "rgba(239,68,68,.13)"
+            };
+          "
+        ></span>
+
+        <strong>${service.name}:</strong>
+
+        <span>
+          ${service.ready ? "Pronto" : "Indisponível"}
+        </span>
+      </span>
+    `).join("");
   }
 
   // =========================================
@@ -417,10 +491,24 @@
   }
 
   async function refreshPosts() {
+    const user = window.schoollinkAuth.currentUser;
+
+    if (!user || authorizedUid !== user.uid) {
+      throw Error("Acesso não autorizado ao painel docente.");
+    }
+
     const snap = await window.schoollinkDb
       .collection("publicacoes")
       .orderBy("criadoEm", "desc")
       .get();
+
+    // Confere novamente após a consulta.
+    if (
+      !window.schoollinkAuth.currentUser ||
+      authorizedUid !== user.uid
+    ) {
+      return;
+    }
 
     posts = snap.docs.map(doc => ({
       id: doc.id,
@@ -431,19 +519,164 @@
   }
 
   // =========================================
+  // ACESSO NEGADO E AUTORIZAÇÃO
+  // =========================================
+
+  function createAccessDeniedPanel() {
+    let panel = $("#acessoNegadoDocente");
+
+    if (panel) return panel;
+
+    panel = document.createElement("section");
+    panel.id = "acessoNegadoDocente";
+    panel.hidden = true;
+    panel.setAttribute("role", "alert");
+
+    panel.style.cssText = `
+      max-width: 650px;
+      margin: 60px auto;
+      padding: 35px 25px;
+      text-align: center;
+      border-radius: 16px;
+      background: var(--cor-superficie, #fff);
+      color: var(--cor-texto, #222);
+      box-shadow: 0 4px 20px rgba(0,0,0,.08);
+    `;
+
+    panel.innerHTML = `
+      <div style="font-size:48px;margin-bottom:15px;">
+        🚫
+      </div>
+
+      <h2 style="margin-bottom:12px;">
+        Ops! Você não deveria estar aqui!
+      </h2>
+
+      <p id="mensagemAcessoNegado">
+        Esta área é exclusiva para professores e gestores
+        do SchoolLink HXV.
+      </p>
+    `;
+
+    const login = $("#painelLoginDocente");
+
+    if (login?.parentNode) {
+      login.parentNode.insertBefore(panel, login);
+    } else {
+      document.body.appendChild(panel);
+    }
+
+    return panel;
+  }
+
+  function denyAccess(message) {
+    authorizedUid = null;
+    posts = [];
+
+    $("#painelLoginDocente").hidden = true;
+    $("#painelDocente").hidden = true;
+    $("#btnSairDocente").hidden = true;
+
+    const panel = createAccessDeniedPanel();
+
+    $("#mensagemAcessoNegado").textContent =
+      message ||
+      "Esta área é exclusiva para professores e gestores do SchoolLink HXV.";
+
+    panel.hidden = false;
+  }
+
+  function clearAccessDenied() {
+    const panel = $("#acessoNegadoDocente");
+
+    if (panel) {
+      panel.hidden = true;
+    }
+  }
+
+  async function verifyDocenteAccess(user) {
+    const currentCheck = ++authCheckId;
+
+    authorizedUid = null;
+
+    $("#painelLoginDocente").hidden = true;
+    $("#painelDocente").hidden = true;
+    $("#btnSairDocente").hidden = true;
+
+    clearAccessDenied();
+
+    if (!ready()) {
+      denyAccess(
+        "Não foi possível verificar sua conta porque o Firebase não está inicializado."
+      );
+
+      return;
+    }
+
+    try {
+      const profileSnap = await window.schoollinkDb
+        .collection("perfis")
+        .doc(user.uid)
+        .get();
+
+      // Ignora verificações antigas.
+      if (currentCheck !== authCheckId) return;
+
+      if (!profileSnap.exists) {
+        denyAccess(
+          "Não encontramos um perfil institucional associado a esta conta. Entre em contato com a gestão escolar."
+        );
+
+        return;
+      }
+
+      const perfil = profileSnap.data();
+
+      const papelAutorizado = [
+        "professor",
+        "gestor"
+      ].includes(perfil.papel);
+
+      if (!papelAutorizado || perfil.ativo !== true) {
+        denyAccess(
+          "Esta área é exclusiva para professores e gestores ativos do SchoolLink HXV. Sua conta não possui autorização para acessá-la."
+        );
+
+        return;
+      }
+
+      authorizedUid = user.uid;
+
+      enter(user);
+
+    } catch (error) {
+      console.error(
+        "[SchoolLink] Erro ao verificar autorização:",
+        error
+      );
+
+      if (currentCheck !== authCheckId) return;
+
+      denyAccess(
+        "Não foi possível verificar sua autorização. Tente novamente ou entre em contato com a gestão escolar."
+      );
+    }
+  }
+
+  // =========================================
   // ENTRAR E SAIR
   // =========================================
 
   function enter(user) {
+    if (!user || authorizedUid !== user.uid) return;
+
+    clearAccessDenied();
+
     $("#painelLoginDocente").hidden = true;
     $("#painelDocente").hidden = false;
     $("#btnSairDocente").hidden = false;
 
-    const status = $(".area-status");
-
-    if (status) {
-      status.innerHTML = "<span></span> Conectado ao Firebase";
-    }
+    updateServiceStatus();
 
     refreshPosts().catch(error => {
       err(
@@ -455,6 +688,9 @@
   }
 
   async function exit() {
+    authorizedUid = null;
+    posts = [];
+
     try {
       await window.schoollinkAuth.signOut();
     } catch (error) {
@@ -464,6 +700,8 @@
     $("#painelLoginDocente").hidden = false;
     $("#painelDocente").hidden = true;
     $("#btnSairDocente").hidden = true;
+
+    clearAccessDenied();
   }
 
   // =========================================
@@ -495,8 +733,8 @@
 
     const user = window.schoollinkAuth.currentUser;
 
-    if (!user) {
-      throw Error("Você precisa estar conectado.");
+    if (!user || authorizedUid !== user.uid) {
+      throw Error("Você não tem autorização para publicar.");
     }
 
     const old = editingId
@@ -512,9 +750,7 @@
     if (
       files.length &&
       (
-        !window.schoollinkSupabaseReady ||
-        !config?.url ||
-        !config?.publishableKey
+        !getSupabaseReady()
       )
     ) {
       throw Error(
@@ -522,7 +758,7 @@
       );
     }
 
-    // ENDPOINT CORRETO DA EDGE FUNCTION
+    // ENDPOINT DA EDGE FUNCTION
 
     const supabaseBaseUrl = config?.url
       ? config.url.replace(/\/+$/, "")
@@ -534,6 +770,14 @@
     // ENVIO DOS ARQUIVOS
 
     for (const item of files) {
+      // Confere a autorização antes de cada upload.
+      if (
+        !window.schoollinkAuth.currentUser ||
+        authorizedUid !== user.uid
+      ) {
+        throw Error("Sua sessão não possui autorização para enviar arquivos.");
+      }
+
       const token = await user.getIdToken();
 
       const formData = new FormData();
@@ -581,6 +825,15 @@
           ) || "Informática"
         ).trim()
       : "Geral";
+
+    // CONFERE A AUTORIZAÇÃO ANTES DE SALVAR.
+
+    if (
+      !window.schoollinkAuth.currentUser ||
+      authorizedUid !== user.uid
+    ) {
+      throw Error("Sua sessão perdeu a autorização para publicar.");
+    }
 
     // MONTAGEM DA PUBLICAÇÃO
 
@@ -705,6 +958,8 @@
 
   $$("[data-doc-secao]").forEach(button => {
     button.addEventListener("click", () => {
+      if (!authorizedUid) return;
+
       showTab(button.dataset.docSecao);
     });
   });
@@ -769,9 +1024,12 @@
 
       clearErr("#erroPublicacao");
 
+      const user = window.schoollinkAuth.currentUser;
+
       if (
         !ready() ||
-        !window.schoollinkAuth.currentUser
+        !user ||
+        authorizedUid !== user.uid
       ) {
         err(
           "#erroPublicacao",
@@ -837,6 +1095,12 @@
   $("#listaPublicacoes").addEventListener(
     "click",
     async event => {
+      const user = window.schoollinkAuth.currentUser;
+
+      if (!user || authorizedUid !== user.uid) {
+        return;
+      }
+
       const editButton = event.target.closest("[data-edit]");
       const archiveButton = event.target.closest("[data-archive]");
 
@@ -920,6 +1184,13 @@
 
       if (archive && confirm("Arquivar esta publicação?")) {
         try {
+          if (
+            !window.schoollinkAuth.currentUser ||
+            authorizedUid !== user.uid
+          ) {
+            throw Error("Você não tem autorização para arquivar.");
+          }
+
           await window.schoollinkDb
             .collection("publicacoes")
             .doc(archive)
@@ -943,18 +1214,34 @@
   );
 
   // =========================================
-  // RECUPERAÇÃO DE SESSÃO
+  // RECUPERAÇÃO DE SESSÃO E AUTORIZAÇÃO
   // =========================================
 
-  window.schoollinkAuth?.onAuthStateChanged(user => {
-    if (user) {
-      enter(user);
+  // Impede a exibição do painel antes da verificação.
 
-    } else {
+  $("#painelDocente").hidden = true;
+  $("#btnSairDocente").hidden = true;
+
+  createAccessDeniedPanel();
+
+  window.schoollinkAuth?.onAuthStateChanged(user => {
+    // Invalida verificações anteriores.
+    authCheckId++;
+
+    authorizedUid = null;
+    posts = [];
+
+    if (!user) {
+      clearAccessDenied();
+
       $("#painelLoginDocente").hidden = false;
       $("#painelDocente").hidden = true;
       $("#btnSairDocente").hidden = true;
+
+      return;
     }
+
+    verifyDocenteAccess(user);
   });
 
   // =========================================
@@ -962,6 +1249,8 @@
   // =========================================
 
   initializeTurmas();
+
+  updateServiceStatus();
 
   if (!ready()) {
     const note = $(".area-form__nota");
