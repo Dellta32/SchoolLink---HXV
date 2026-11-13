@@ -1930,3 +1930,37 @@ body.area-imagem-aberta {
     transition: none;
   }
 }
+
+/* Corrige sobreposição do indicador de serviços */
+#schoollinkServiceStatus {
+    position: static !important;
+    inset: auto !important;
+    transform: none !important;
+
+    display: flex !important;
+    width: 100%;
+    max-width: 100%;
+
+    margin: 18px 0 0 !important;
+
+    z-index: auto !important;
+    pointer-events: auto;
+}
+
+/* Garante que a navegação mobile fique acima */
+.mobile-nav {
+    position: fixed;
+    z-index: 10000 !important;
+    pointer-events: auto !important;
+}
+
+/* Evita que o indicador invada a área da navegação */
+@media (max-width: 768px) {
+    #schoollinkServiceStatus {
+        position: static !important;
+        bottom: auto !important;
+        top: auto !important;
+        left: auto !important;
+        right: auto !important;
+    }
+}
