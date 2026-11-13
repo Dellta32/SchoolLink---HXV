@@ -389,20 +389,23 @@
             return `
               <div class="area-anexo area-anexo--imagem">
 
-                <a
-                  href="${safeUrl}"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="Abrir imagem ${nome}"
+                <button
+                  type="button"
+                  class="area-anexo__visualizar"
+                  data-image-url="${safeUrl}"
+                  data-image-name="${nome}"
+                  aria-label="Expandir imagem ${nome}"
                 >
                   <img
                     src="${safeUrl}"
                     alt="${nome}"
                     loading="lazy"
                   >
-                </a>
+                </button>
 
-                <span>${nome}</span>
+                <span class="area-anexo__nome">
+                  ${nome}
+                </span>
 
               </div>
             `;
@@ -425,30 +428,241 @@
               : "ARQUIVO";
 
           return `
-            <a
-              class="area-anexo area-anexo--arquivo"
-              href="${safeUrl}"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Abrir arquivo ${nome}"
-            >
+            <div class="area-anexo area-anexo--arquivo">
 
-              <span class="area-anexo__icone">
-                ${formato}
-              </span>
+              <a
+                class="area-anexo__abrir"
+                href="${safeUrl}"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Abrir arquivo ${nome}"
+              >
 
-              <span class="area-anexo__nome">
-                ${nome}
-              </span>
+                <span class="area-anexo__icone">
+                  ${formato}
+                </span>
 
-              <span aria-hidden="true">↗</span>
+                <span class="area-anexo__nome">
+                  ${nome}
+                </span>
 
-            </a>
+                <span aria-hidden="true">↗</span>
+
+              </a>
+
+              <button
+                type="button"
+                class="area-anexo__download"
+                data-download-url="${safeUrl}"
+                data-download-name="${nome}"
+                aria-label="Baixar ${nome}"
+                title="Baixar arquivo"
+              >
+                <span aria-hidden="true">↓</span>
+                <span>Baixar</span>
+              </button>
+
+            </div>
           `;
         }).join("")}
       </div>
     `;
   }
+
+  // VISUALIZADOR DE IMAGENS
+
+  function setupAttachmentViewer() {
+    if ($("#areaImagemExpandida")) return;
+
+    const viewer = document.createElement("div");
+
+    viewer.id = "areaImagemExpandida";
+    viewer.className = "area-imagem-expandida";
+    viewer.hidden = true;
+
+    viewer.innerHTML = `
+      <div class="area-imagem-expandida__painel">
+
+        <button
+          type="button"
+          class="area-imagem-expandida__fechar"
+          data-fechar-imagem
+          aria-label="Fechar imagem"
+        >
+          ×
+        </button>
+
+        <img
+          class="area-imagem-expandida__imagem"
+          src=""
+          alt=""
+        >
+
+        <div class="area-imagem-expandida__rodape">
+
+          <span class="area-imagem-expandida__nome"></span>
+
+          <button
+            type="button"
+            class="area-anexo__download"
+            data-download-expanded
+          >
+            <span aria-hidden="true">↓</span>
+            <span>Baixar imagem</span>
+          </button>
+
+        </div>
+
+      </div>
+    `;
+
+    document.body.appendChild(viewer);
+  }
+
+  function openExpandedImage(url, nome) {
+    const viewer = $("#areaImagemExpandida");
+
+    if (!viewer) return;
+
+    const image = $(".area-imagem-expandida__imagem", viewer);
+    const title = $(".area-imagem-expandida__nome", viewer);
+    const download = $("[data-download-expanded]", viewer);
+
+    image.src = url;
+    image.alt = nome;
+
+    title.textContent = nome;
+
+    download.dataset.downloadUrl = url;
+    download.dataset.downloadName = nome;
+
+    viewer.hidden = false;
+
+    document.body.classList.add("area-imagem-aberta");
+  }
+
+  function closeExpandedImage() {
+    const viewer = $("#areaImagemExpandida");
+
+    if (!viewer) return;
+
+    viewer.hidden = true;
+
+    const image = $(".area-imagem-expandida__imagem", viewer);
+
+    image.src = "";
+    image.alt = "";
+
+    document.body.classList.remove("area-imagem-aberta");
+  }
+
+  // DOWNLOAD DOS ANEXOS
+
+  async function downloadAttachment(url, nome, button) {
+    if (!url || !/^https?:\/\//i.test(url)) {
+      alert("Não foi possível localizar o arquivo.");
+      return;
+    }
+
+    const originalContent = button.innerHTML;
+
+    button.disabled = true;
+    button.innerHTML = "Baixando...";
+
+    try {
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error(
+          "Não foi possível acessar o arquivo."
+        );
+      }
+
+      const blob = await response.blob();
+
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      link.href = objectUrl;
+      link.download = nome || "arquivo";
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      setTimeout(() => {
+        URL.revokeObjectURL(objectUrl);
+      }, 1000);
+
+    } catch (error) {
+      console.error(
+        "[SchoolLink] Erro ao baixar anexo:",
+        error
+      );
+
+      alert(
+        "Não foi possível baixar este arquivo. Ele pode ter expirado ou estar temporariamente indisponível."
+      );
+
+    } finally {
+      button.disabled = false;
+      button.innerHTML = originalContent;
+    }
+  }
+
+  // EVENTOS DO VISUALIZADOR E DOS DOWNLOADS
+
+  document.addEventListener("click", async e => {
+    const imageButton = e.target.closest(
+      "[data-image-url]"
+    );
+
+    if (imageButton) {
+      openExpandedImage(
+        imageButton.dataset.imageUrl,
+        imageButton.dataset.imageName || "Imagem"
+      );
+
+      return;
+    }
+
+    const downloadButton = e.target.closest(
+      "[data-download-url], [data-download-expanded]"
+    );
+
+    if (downloadButton) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      await downloadAttachment(
+        downloadButton.dataset.downloadUrl,
+        downloadButton.dataset.downloadName || "arquivo",
+        downloadButton
+      );
+
+      return;
+    }
+
+    if (e.target.closest("[data-fechar-imagem]")) {
+      closeExpandedImage();
+      return;
+    }
+
+    if (e.target.id === "areaImagemExpandida") {
+      closeExpandedImage();
+    }
+  });
+
+  // FECHAR VISUALIZADOR COM ESC
+
+  document.addEventListener("keydown", e => {
+    if (
+      e.key === "Escape" &&
+      !$("#areaImagemExpandida")?.hidden
+    ) {
+      closeExpandedImage();
+    }
+  });
 
   // CARTÃO DE PUBLICAÇÃO
 
@@ -724,6 +938,8 @@
     currentStudent = null;
     tasks = [];
     posts = [];
+
+    closeExpandedImage();
 
     $("#painelLogin").hidden = false;
     $("#painelAluno").hidden = true;
@@ -1167,6 +1383,7 @@
 
   // ESTADO INICIAL
 
+  setupAttachmentViewer();
   carregarTurmasCadastro();
   renderAll();
 
