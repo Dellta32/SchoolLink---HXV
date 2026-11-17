@@ -20,6 +20,12 @@
     "adminSection"
   ];
 
+  const tabs = {
+    register: $("registerTab"),
+    manager: $("managerTab"),
+    password: $("passwordTab")
+  };
+
   let currentUser = null;
   let securityUnlocked = false;
 
@@ -126,7 +132,10 @@
     }
   }
 
-  // Validação da senha de segurança
+  // ======================================
+  // VALIDAÇÃO DA SENHA DE SEGURANÇA
+  // ======================================
+
   $("securityForm").addEventListener("submit", async event => {
     event.preventDefault();
 
@@ -163,89 +172,38 @@
     }
   });
 
-  // Alternância das abas
+  // ======================================
+  // ALTERNÂNCIA DAS ABAS
+  // ======================================
+
   document.querySelectorAll(".tab").forEach(tab => {
     tab.addEventListener("click", () => {
       if (!securityUnlocked) return;
+
+      const selectedTab = tab.dataset.tab;
+
+      if (!tabs[selectedTab]) return;
 
       document.querySelectorAll(".tab").forEach(item => {
         item.classList.toggle("active", item === tab);
       });
 
-      $("registerTab").classList.toggle(
-        "hidden",
-        tab.dataset.tab !== "register"
-      );
-
-      $("passwordTab").classList.toggle(
-        "hidden",
-        tab.dataset.tab !== "password"
-      );
+      Object.entries(tabs).forEach(([name, section]) => {
+        section.classList.toggle(
+          "hidden",
+          name !== selectedTab
+        );
+      });
     });
   });
 
-  // Cadastro de professor
-  $("registerForm").addEventListener("submit", async event => {
-    event.preventDefault();
+  // ======================================
+  // SOLICITAR SENHA DE SEGURANÇA
+  // ======================================
 
-    if (!securityUnlocked) return;
-
-    const button = event.submitter;
-
-    const nome = $("teacherName").value.trim();
-    const email = $("teacherEmail").value.trim();
-    const senha = $("teacherPassword").value;
-    const confirmacao = $("teacherPasswordConfirm").value;
-
-    showMessage($("registerMessage"), "");
-
-    if (senha !== confirmacao) {
-      showMessage(
-        $("registerMessage"),
-        "As senhas não coincidem.",
-        "error"
-      );
-      return;
-    }
-
-    button.disabled = true;
-    button.textContent = "Cadastrando...";
-
-    try {
-      const result = await callFunction({
-        acao: "cadastrar_professor",
-        nome,
-        email,
-        senhaInicial: senha,
-        senhaSeguranca: await getSecurityPassword()
-      });
-
-      showMessage(
-        $("registerMessage"),
-        result.mensagem,
-        "success"
-      );
-
-      $("registerForm").reset();
-
-    } catch (error) {
-      showMessage(
-        $("registerMessage"),
-        error.message,
-        "error"
-      );
-
-    } finally {
-      button.disabled = false;
-      button.textContent = "Cadastrar professor";
-    }
-  });
-
-  // A senha não fica armazenada no navegador.
-  // Ela é solicitada novamente antes de cada cadastro.
-  async function getSecurityPassword() {
+  async function getSecurityPassword(roleLabel) {
     const password = prompt(
-      "Confirme a senha de segurança para cadastrar este professor:"
+      `Confirme a senha de segurança para cadastrar ${roleLabel}:`
     );
 
     if (!password) {
@@ -255,7 +213,133 @@
     return password;
   }
 
-  // Alteração da senha de segurança
+  // ======================================
+  // CADASTRO DE PROFESSOR OU GESTOR
+  // ======================================
+
+  async function registerAccount({
+    formId,
+    nameId,
+    emailId,
+    passwordId,
+    confirmId,
+    messageId,
+    buttonText,
+    action,
+    roleLabel
+  }) {
+    const form = $(formId);
+    const message = $(messageId);
+
+    form.addEventListener("submit", async event => {
+      event.preventDefault();
+
+      if (!securityUnlocked) return;
+
+      const button = event.submitter;
+
+      const nome = $(nameId).value.trim();
+      const email = $(emailId).value.trim();
+      const senha = $(passwordId).value;
+      const confirmacao = $(confirmId).value;
+
+      showMessage(message, "");
+
+      if (!nome || !email || !senha) {
+        showMessage(
+          message,
+          "Preencha todos os campos.",
+          "error"
+        );
+        return;
+      }
+
+      if (senha.length < 8 || senha.length > 128) {
+        showMessage(
+          message,
+          "A senha inicial deve ter entre 8 e 128 caracteres.",
+          "error"
+        );
+        return;
+      }
+
+      if (senha !== confirmacao) {
+        showMessage(
+          message,
+          "As senhas não coincidem.",
+          "error"
+        );
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent = "Cadastrando...";
+
+      try {
+        const senhaSeguranca =
+          await getSecurityPassword(roleLabel);
+
+        const result = await callFunction({
+          acao: action,
+          nome,
+          email,
+          senhaInicial: senha,
+          senhaSeguranca
+        });
+
+        showMessage(
+          message,
+          result.mensagem ||
+            `${roleLabel} cadastrado com sucesso.`,
+          "success"
+        );
+
+        form.reset();
+
+      } catch (error) {
+        showMessage(
+          message,
+          error.message,
+          "error"
+        );
+
+      } finally {
+        button.disabled = false;
+        button.textContent = buttonText;
+      }
+    });
+  }
+
+  // Cadastro de professor
+  registerAccount({
+    formId: "registerForm",
+    nameId: "teacherName",
+    emailId: "teacherEmail",
+    passwordId: "teacherPassword",
+    confirmId: "teacherPasswordConfirm",
+    messageId: "registerMessage",
+    buttonText: "Cadastrar professor",
+    action: "cadastrar_professor",
+    roleLabel: "este professor"
+  });
+
+  // Cadastro de gestor
+  registerAccount({
+    formId: "managerForm",
+    nameId: "managerName",
+    emailId: "managerEmail",
+    passwordId: "managerPassword",
+    confirmId: "managerPasswordConfirm",
+    messageId: "managerMessage",
+    buttonText: "Cadastrar gestor",
+    action: "cadastrar_gestor",
+    roleLabel: "este gestor"
+  });
+
+  // ======================================
+  // ALTERAÇÃO DA SENHA DE SEGURANÇA
+  // ======================================
+
   $("changePasswordForm").addEventListener(
     "submit",
     async event => {
@@ -280,10 +364,10 @@
         return;
       }
 
-      if (nova.length < 12) {
+      if (nova.length < 12 || nova.length > 128) {
         showMessage(
           $("passwordMessage"),
-          "A nova senha precisa ter pelo menos 12 caracteres.",
+          "A nova senha precisa ter entre 12 e 128 caracteres.",
           "error"
         );
         return;
@@ -321,7 +405,10 @@
     }
   );
 
-  // Sair
+  // ======================================
+  // SAIR
+  // ======================================
+
   $("logoutButton").addEventListener("click", async () => {
     securityUnlocked = false;
 
@@ -337,7 +424,10 @@
     window.location.href = "index.html";
   });
 
-  // Inicialização
+  // ======================================
+  // INICIALIZAÇÃO
+  // ======================================
+
   if (
     !window.schoollinkFirebaseReady ||
     !window.schoollinkAuth ||
