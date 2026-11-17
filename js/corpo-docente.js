@@ -1,3 +1,4 @@
+
 /* SchoolLink HXV — Corpo docente
  *
  * Autenticação: Supabase Auth
@@ -19,7 +20,6 @@
   const MAX_FILES = 5;
   const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
-  // Precisa corresponder ao nome do bucket no Supabase.
   const STORAGE_BUCKET = "schoollink-arquivos";
 
   const $ = (selector, root = document) =>
@@ -1245,14 +1245,17 @@
       savedPublication = data;
 
     } else {
-      const { data, error } = await supabase
+      // Gera o UUID antes da inserção.
+      // Assim não precisamos usar .select() no INSERT.
+      const publicationId = crypto.randomUUID();
+
+      const { error } = await supabase
         .from("publicacoes")
         .insert({
           ...payload,
+          id: publicationId,
           autor_id: user.id
-        })
-        .select()
-        .single();
+        });
 
       if (error) {
         console.error(
@@ -1266,7 +1269,11 @@
         );
       }
 
-      savedPublication = data;
+      savedPublication = {
+        id: publicationId,
+        ...payload,
+        autor_id: user.id
+      };
     }
 
     const publicationId = savedPublication.id;
@@ -1809,7 +1816,6 @@
       return;
     }
 
-    // Evita que uma verificação antiga sobrescreva a nova.
     if (checkId !== authCheckId) return;
 
     await verifyDocenteAccess(session.user);
@@ -1829,7 +1835,7 @@
     if (!supabaseReady()) {
       showLogin(
         window.schoollinkSupabaseError ||
-        "Supabase não inicializado. Confira os arquivos de configuração."
+        "Supabase não inicializado. Confira a configuração."
       );
 
       const note = $(".area-form__nota");
@@ -1845,8 +1851,6 @@
 
     // Observa login, renovação e encerramento da sessão.
     supabase.auth.onAuthStateChange((_event, session) => {
-      // Deixa o callback de autenticação terminar antes
-      // de consultar as tabelas do banco.
       Promise.resolve().then(() => handleSession(session));
     });
 
