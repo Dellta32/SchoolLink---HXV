@@ -7,7 +7,7 @@
 
   <meta name="robots" content="noindex, nofollow">
 
-  <title>Cadastro de Professores | SchoolLink HXV</title>
+  <title>Gestão de acessos | SchoolLink HXV</title>
 
   <link rel="stylesheet" href="css/cadastro-professor.css">
 
@@ -52,7 +52,7 @@
 
       <div class="heading">
         <span class="eyebrow">ADMINISTRAÇÃO</span>
-        <h1>Cadastro de professores</h1>
+        <h1>Gestão de acessos</h1>
         <p>Informe a senha de segurança para continuar.</p>
       </div>
 
@@ -84,24 +84,42 @@
 
       <div class="heading">
         <span class="eyebrow">PAINEL ADMINISTRATIVO</span>
-        <h1>Gestão de professores</h1>
-        <p>Gerencie os acessos dos professores do CEEP HXV.</p>
+        <h1>Gestão de acessos</h1>
+        <p>Gerencie os acessos dos professores e gestores do CEEP HXV.</p>
       </div>
 
       <nav class="tabs">
-        <button class="tab active" data-tab="register">
+
+        <button
+          type="button"
+          class="tab active"
+          data-tab="register"
+        >
           Novo professor
         </button>
 
-        <button class="tab" data-tab="password">
+        <button
+          type="button"
+          class="tab"
+          data-tab="manager"
+        >
+          Novo gestor
+        </button>
+
+        <button
+          type="button"
+          class="tab"
+          data-tab="password"
+        >
           Segurança
         </button>
+
       </nav>
 
-      <!-- CADASTRO -->
+      <!-- CADASTRO DE PROFESSOR -->
       <section id="registerTab" class="tab-content">
 
-        <h2>Novo cadastro</h2>
+        <h2>Novo professor</h2>
 
         <p class="description">
           Os dados informados serão registrados no Firebase.
@@ -164,13 +182,79 @@
 
       </section>
 
+      <!-- CADASTRO DE GESTOR -->
+      <section id="managerTab" class="tab-content hidden">
+
+        <h2>Novo gestor</h2>
+
+        <p class="description">
+          Cadastre uma conta com permissões administrativas no SchoolLink HXV.
+        </p>
+
+        <form id="managerForm">
+
+          <label for="managerName">Nome completo</label>
+
+          <input
+            type="text"
+            id="managerName"
+            placeholder="Nome do gestor"
+            maxlength="120"
+            autocomplete="name"
+            required
+          >
+
+          <label for="managerEmail">E-mail institucional</label>
+
+          <input
+            type="email"
+            id="managerEmail"
+            placeholder="gestor@..."
+            maxlength="254"
+            autocomplete="email"
+            required
+          >
+
+          <label for="managerPassword">Senha inicial</label>
+
+          <input
+            type="password"
+            id="managerPassword"
+            placeholder="Mínimo de 8 caracteres"
+            minlength="8"
+            maxlength="128"
+            autocomplete="new-password"
+            required
+          >
+
+          <label for="managerPasswordConfirm">
+            Confirmar senha inicial
+          </label>
+
+          <input
+            type="password"
+            id="managerPasswordConfirm"
+            placeholder="Digite novamente a senha"
+            required
+          >
+
+          <button type="submit" class="button">
+            Cadastrar gestor
+          </button>
+
+        </form>
+
+        <p id="managerMessage" class="message"></p>
+
+      </section>
+
       <!-- ALTERAÇÃO DE SENHA -->
       <section id="passwordTab" class="tab-content hidden">
 
         <h2>Senha de segurança</h2>
 
         <p class="description">
-          Altere a senha utilizada para liberar o cadastro de professores.
+          Altere a senha utilizada para liberar os cadastros.
         </p>
 
         <form id="changePasswordForm">
