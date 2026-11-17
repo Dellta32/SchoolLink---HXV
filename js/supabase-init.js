@@ -1,9 +1,14 @@
 
-/* SchoolLink HXV — Inicialização do Supabase
- * Supabase Storage: imagens e arquivos das publicações.
- * Firebase: autenticação e dados.
- * O status visual é controlado exclusivamente pelo corpo-docente.js.
+/* SchoolLink HXV — Inicialização central do Supabase
+ *
+ * Supabase:
+ * - Authentication
+ * - Database
+ * - Storage
+ *
+ * Todas as páginas devem utilizar o mesmo cliente.
  */
+
 (() => {
   "use strict";
 
@@ -16,39 +21,47 @@
     config.url.startsWith("https://") &&
     !config.url.includes("/rest/v1/") &&
     typeof config.publishableKey === "string" &&
-    config.publishableKey.length > 20;
+    config.publishableKey.startsWith("sb_publishable_");
 
-  if (
-    !configured ||
-    !sdk ||
-    typeof sdk.createClient !== "function"
-  ) {
+  if (!configured) {
     window.schoollinkSupabaseReady = false;
     window.schoollinkSupabaseError =
-      "Preencha supabase-config.js com a Project URL e a Publishable key e confira a conexão.";
-
+      "Configuração pública do Supabase inválida.";
     return;
   }
 
-  window.schoollinkSupabase = sdk.createClient(
-    config.url,
-    config.publishableKey
-  );
+  if (!sdk || typeof sdk.createClient !== "function") {
+    window.schoollinkSupabaseReady = false;
+    window.schoollinkSupabaseError =
+      "Biblioteca Supabase não carregada.";
+    return;
+  }
 
-  window.schoollinkSupabaseReady = true;
-  window.schoollinkSupabaseError = null;
+  try {
+    // Evita criar clientes duplicados.
+    if (!window.schoollinkSupabase) {
+      window.schoollinkSupabase = sdk.createClient(
+        config.url,
+        config.publishableKey,
+        {
+          auth: {
+            persistSession: true,
+            autoRefreshToken: true,
+            detectSessionInUrl: true
+          }
+        }
+      );
+    }
 
-  // Remove indicadores antigos duplicados.
-  document.querySelectorAll(
-    "#schoollinkSupabaseStatus, #schoollinkServiceIndicators"
-  ).forEach(element => element.remove());
+    window.schoollinkSupabaseReady = true;
+    window.schoollinkSupabaseError = null;
 
-  // Remove o contêiner antigo de indicadores duplicados.
-document.querySelectorAll(
-  ".area-docente__status-servicos"
-).forEach(element => {
-  element.remove();
-});
+    console.info("[SchoolLink] Supabase inicializado.");
+  } catch (error) {
+    window.schoollinkSupabaseReady = false;
+    window.schoollinkSupabaseError =
+      error?.message || "Falha ao inicializar o Supabase.";
 
+    console.error("[SchoolLink] Erro:", error);
+  }
 })();
-
