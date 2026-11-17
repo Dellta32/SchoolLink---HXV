@@ -11,15 +11,17 @@
 
   <link rel="stylesheet" href="css/cadastro-professor.css">
 
-  <!-- Firebase Compat -->
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <!-- Supabase JS -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+    defer
+  ></script>
 
-  <!-- Configuração existente do SchoolLink -->
-  <script src="firebase-config.js"></script>
-  <script src="js/firebase-init.js"></script>
+  <!-- Configuração e inicialização -->
+  <script src="supabase-config.js" defer></script>
+  <script src="js/supabase-init.js" defer></script>
 
+  <!-- Lógica da página -->
   <script src="js/cadastro-professor.js" defer></script>
 </head>
 
@@ -32,62 +34,41 @@
       <span class="restricted">Área restrita</span>
     </header>
 
+    <!-- CARREGAMENTO -->
     <section id="loading" class="panel">
       <div class="loader"></div>
       <p>Verificando autorização...</p>
     </section>
 
+    <!-- ACESSO NEGADO -->
     <section id="accessDenied" class="panel hidden">
       <div class="icon">🔒</div>
+
       <h1>Acesso não autorizado</h1>
+
       <p id="accessMessage">
         Você não possui permissão para acessar esta página.
       </p>
+
       <button id="backButton" class="button secondary">
         Voltar
       </button>
     </section>
 
-    <section id="securitySection" class="panel hidden">
-
-      <div class="heading">
-        <span class="eyebrow">ADMINISTRAÇÃO</span>
-        <h1>Gestão de acessos</h1>
-        <p>Informe a senha de segurança para continuar.</p>
-      </div>
-
-      <form id="securityForm">
-
-        <label for="securityPassword">
-          Senha de segurança
-        </label>
-
-        <input
-          type="password"
-          id="securityPassword"
-          placeholder="Digite a senha de segurança"
-          autocomplete="current-password"
-          required
-        >
-
-        <button type="submit" class="button">
-          Desbloquear acesso
-        </button>
-
-      </form>
-
-      <p id="securityMessage" class="message"></p>
-
-    </section>
-
+    <!-- PAINEL ADMINISTRATIVO -->
     <section id="adminSection" class="panel hidden">
 
       <div class="heading">
         <span class="eyebrow">PAINEL ADMINISTRATIVO</span>
+
         <h1>Gestão de acessos</h1>
-        <p>Gerencie os acessos dos professores e gestores do CEEP HXV.</p>
+
+        <p>
+          Gerencie os acessos dos professores e gestores do CEEP HXV.
+        </p>
       </div>
 
+      <!-- ABAS -->
       <nav class="tabs">
 
         <button
@@ -122,7 +103,7 @@
         <h2>Novo professor</h2>
 
         <p class="description">
-          Os dados informados serão registrados no Firebase.
+          Cadastre uma conta de professor no SchoolLink HXV.
         </p>
 
         <form id="registerForm">
@@ -154,8 +135,8 @@
           <input
             type="password"
             id="teacherPassword"
-            placeholder="Mínimo de 8 caracteres"
-            minlength="8"
+            placeholder="Mínimo de 10 caracteres"
+            minlength="10"
             maxlength="128"
             autocomplete="new-password"
             required
@@ -169,6 +150,9 @@
             type="password"
             id="teacherPasswordConfirm"
             placeholder="Digite novamente a senha"
+            minlength="10"
+            maxlength="128"
+            autocomplete="new-password"
             required
           >
 
@@ -220,8 +204,8 @@
           <input
             type="password"
             id="managerPassword"
-            placeholder="Mínimo de 8 caracteres"
-            minlength="8"
+            placeholder="Mínimo de 10 caracteres"
+            minlength="10"
             maxlength="128"
             autocomplete="new-password"
             required
@@ -235,6 +219,9 @@
             type="password"
             id="managerPasswordConfirm"
             placeholder="Digite novamente a senha"
+            minlength="10"
+            maxlength="128"
+            autocomplete="new-password"
             required
           >
 
@@ -248,13 +235,13 @@
 
       </section>
 
-      <!-- ALTERAÇÃO DE SENHA -->
+      <!-- ALTERAÇÃO DA SENHA DA CONTA -->
       <section id="passwordTab" class="tab-content hidden">
 
-        <h2>Senha de segurança</h2>
+        <h2>Senha da conta</h2>
 
         <p class="description">
-          Altere a senha utilizada para liberar os cadastros.
+          Altere a senha utilizada para entrar na sua conta de gestão.
         </p>
 
         <form id="changePasswordForm">
@@ -277,10 +264,10 @@
           <input
             type="password"
             id="newPassword"
-            minlength="12"
+            minlength="10"
             maxlength="128"
             autocomplete="new-password"
-            placeholder="Mínimo de 12 caracteres"
+            placeholder="Mínimo de 10 caracteres"
             required
           >
 
@@ -291,6 +278,8 @@
           <input
             type="password"
             id="confirmNewPassword"
+            minlength="10"
+            maxlength="128"
             autocomplete="new-password"
             required
           >
@@ -305,6 +294,7 @@
 
       </section>
 
+      <!-- SAIR -->
       <button id="logoutButton" class="logout">
         Sair da área restrita
       </button>
