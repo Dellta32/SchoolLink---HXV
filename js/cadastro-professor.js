@@ -9,7 +9,7 @@
     "sb_publishable_itHql7RT_VWV_OHn9RjGLw_Jd4KVqDa";
 
   const FUNCTION_URL =
-    `${SUPABASE_URL}/functions/v1/schoollink-cadastro-professor`;
+    `${SUPABASE_URL}/functions/v1/schoollink-cadastro`;
 
   const $ = id => document.getElementById(id);
 
@@ -26,12 +26,16 @@
     password: $("passwordTab")
   };
 
+  const supabase = window.schoollinkSupabase;
+
   let currentUser = null;
-  let securityUnlocked = false;
 
   function showSection(section) {
     sections.forEach(id => {
-      $(id).classList.toggle("hidden", id !== section);
+      const element = $(id);
+      if (element) {
+        element.classList.toggle("hidden", id !== section);
+      }
     });
   }
 
@@ -40,26 +44,39 @@
     element.className = `message ${type}`;
   }
 
-  async function getFirebaseToken() {
-    if (!currentUser) {
-      throw new Error("Você não está autenticado.");
-    }
-
-    return currentUser.getIdToken();
+  function denyAccess(message) {
+    $("accessMessage").textContent = message;
+    showSection("accessDenied");
   }
 
+  // ======================================
+  // AUTENTICAÇÃO E SESSÃO
+  // ======================================
+
+  async function getAccessToken() {
+    const { data, error } = await supabase.auth.getSession();
+
+    if (error || !data.session) {
+      throw new Error("Sua sessão expirou. Entre novamente.");
+    }
+
+    return data.session.access_token;
+  }
+
+  // ======================================
+  // COMUNICAÇÃO COM A EDGE FUNCTION
+  // ======================================
+
   async function callFunction(payload) {
-    const token = await getFirebaseToken();
+    const token = await getAccessToken();
 
     const response = await fetch(FUNCTION_URL, {
       method: "POST",
-
       headers: {
         "Content-Type": "application/json",
         "apikey": SUPABASE_KEY,
         "Authorization": `Bearer ${token}`
       },
-
       body: JSON.stringify(payload)
     });
 
@@ -67,64 +84,61 @@
 
     if (!response.ok) {
       throw new Error(
-        result.erro || "Não foi possível concluir a operação."
+        result.error || "Não foi possível concluir a operação."
       );
     }
 
     return result;
   }
 
-  function denyAccess(message) {
-    $("accessMessage").textContent = message;
-    showSection("accessDenied");
-  }
+  // ======================================
+  // VERIFICAÇÃO DO GESTOR
+  // ======================================
 
   async function verifyManager(user) {
-    const profile = await window.schoollinkDb
-      .collection("perfis")
-      .doc(user.uid)
-      .get();
+    const { data, error } = await supabase
+      .from("perfis")
+      .select("id, nome, papel, ativo")
+      .eq("id", user.id)
+      .maybeSingle();
 
-    if (!profile.exists) {
-      return false;
+    if (error) {
+      console.error("[SchoolLink] Erro ao consultar perfil:", error);
+      throw new Error("Não foi possível verificar suas permissões.");
     }
 
-    const data = profile.data();
-
     return (
+      data &&
       data.ativo === true &&
       data.papel === "gestor"
     );
   }
 
-  async function initializePage(user) {
+  async function initializePage() {
     try {
-      if (!window.schoollinkFirebaseReady) {
-        throw new Error(
-          window.schoollinkFirebaseError ||
-          "Firebase não foi inicializado."
-        );
+      if (!supabase || !window.schoollinkSupabaseReady) {
+        throw new Error("Supabase não foi inicializado.");
       }
 
-      if (!user) {
+      const { data, error } = await supabase.auth.getUser();
+
+      if (error || !data.user) {
         denyAccess(
           "Entre primeiro na sua conta de gestão do SchoolLink."
         );
         return;
       }
 
-      currentUser = user;
+      currentUser = data.user;
 
-      const authorized = await verifyManager(user);
+      const authorized = await verifyManager(currentUser);
 
       if (!authorized) {
-        denyAccess(
-          "Sua conta não possui permissão de gestor."
-        );
+        denyAccess("Sua conta não possui permissão de gestor.");
         return;
       }
 
-      showSection("securitySection");
+      showSection("adminSection");
 
     } catch (error) {
       console.error("[SchoolLink Cadastro]", error);
@@ -133,53 +147,11 @@
   }
 
   // ======================================
-  // VALIDAÇÃO DA SENHA DE SEGURANÇA
-  // ======================================
-
-  $("securityForm").addEventListener("submit", async event => {
-    event.preventDefault();
-
-    const button = event.submitter;
-    const password = $("securityPassword").value;
-
-    showMessage($("securityMessage"), "");
-
-    button.disabled = true;
-    button.textContent = "Verificando...";
-
-    try {
-      await callFunction({
-        acao: "validar_senha",
-        senhaSeguranca: password
-      });
-
-      securityUnlocked = true;
-
-      $("securityPassword").value = "";
-
-      showSection("adminSection");
-
-    } catch (error) {
-      showMessage(
-        $("securityMessage"),
-        error.message,
-        "error"
-      );
-
-    } finally {
-      button.disabled = false;
-      button.textContent = "Desbloquear acesso";
-    }
-  });
-
-  // ======================================
   // ALTERNÂNCIA DAS ABAS
   // ======================================
 
   document.querySelectorAll(".tab").forEach(tab => {
     tab.addEventListener("click", () => {
-      if (!securityUnlocked) return;
-
       const selectedTab = tab.dataset.tab;
 
       if (!tabs[selectedTab]) return;
@@ -198,26 +170,10 @@
   });
 
   // ======================================
-  // SOLICITAR SENHA DE SEGURANÇA
-  // ======================================
-
-  async function getSecurityPassword(roleLabel) {
-    const password = prompt(
-      `Confirme a senha de segurança para cadastrar ${roleLabel}:`
-    );
-
-    if (!password) {
-      throw new Error("Cadastro cancelado.");
-    }
-
-    return password;
-  }
-
-  // ======================================
   // CADASTRO DE PROFESSOR OU GESTOR
   // ======================================
 
-  async function registerAccount({
+  function registerAccount({
     formId,
     nameId,
     emailId,
@@ -225,7 +181,7 @@
     confirmId,
     messageId,
     buttonText,
-    action,
+    papel,
     roleLabel
   }) {
     const form = $(formId);
@@ -234,9 +190,12 @@
     form.addEventListener("submit", async event => {
       event.preventDefault();
 
-      if (!securityUnlocked) return;
-
       const button = event.submitter;
+
+      if (!currentUser) {
+        showMessage(message, "Sessão não encontrada.", "error");
+        return;
+      }
 
       const nome = $(nameId).value.trim();
       const email = $(emailId).value.trim();
@@ -245,7 +204,7 @@
 
       showMessage(message, "");
 
-      if (!nome || !email || !senha) {
+      if (!nome || !email || !senha || !confirmacao) {
         showMessage(
           message,
           "Preencha todos os campos.",
@@ -254,10 +213,10 @@
         return;
       }
 
-      if (senha.length < 8 || senha.length > 128) {
+      if (senha.length < 10 || senha.length > 128) {
         showMessage(
           message,
-          "A senha inicial deve ter entre 8 e 128 caracteres.",
+          "A senha inicial deve ter entre 10 e 128 caracteres.",
           "error"
         );
         return;
@@ -276,20 +235,16 @@
       button.textContent = "Cadastrando...";
 
       try {
-        const senhaSeguranca =
-          await getSecurityPassword(roleLabel);
-
         const result = await callFunction({
-          acao: action,
           nome,
           email,
-          senhaInicial: senha,
-          senhaSeguranca
+          senha,
+          papel
         });
 
         showMessage(
           message,
-          result.mensagem ||
+          result.message ||
             `${roleLabel} cadastrado com sucesso.`,
           "success"
         );
@@ -297,6 +252,8 @@
         form.reset();
 
       } catch (error) {
+        console.error("[SchoolLink Cadastro]", error);
+
         showMessage(
           message,
           error.message,
@@ -319,8 +276,8 @@
     confirmId: "teacherPasswordConfirm",
     messageId: "registerMessage",
     buttonText: "Cadastrar professor",
-    action: "cadastrar_professor",
-    roleLabel: "este professor"
+    papel: "professor",
+    roleLabel: "Professor"
   });
 
   // Cadastro de gestor
@@ -332,20 +289,18 @@
     confirmId: "managerPasswordConfirm",
     messageId: "managerMessage",
     buttonText: "Cadastrar gestor",
-    action: "cadastrar_gestor",
-    roleLabel: "este gestor"
+    papel: "gestor",
+    roleLabel: "Gestor"
   });
 
   // ======================================
-  // ALTERAÇÃO DA SENHA DE SEGURANÇA
+  // ALTERAÇÃO DA SENHA DA CONTA ATUAL
   // ======================================
 
   $("changePasswordForm").addEventListener(
     "submit",
     async event => {
       event.preventDefault();
-
-      if (!securityUnlocked) return;
 
       const button = event.submitter;
 
@@ -354,6 +309,15 @@
       const confirmacao = $("confirmNewPassword").value;
 
       showMessage($("passwordMessage"), "");
+
+      if (!atual || !nova || !confirmacao) {
+        showMessage(
+          $("passwordMessage"),
+          "Preencha todos os campos.",
+          "error"
+        );
+        return;
+      }
 
       if (nova !== confirmacao) {
         showMessage(
@@ -364,10 +328,10 @@
         return;
       }
 
-      if (nova.length < 12 || nova.length > 128) {
+      if (nova.length < 10 || nova.length > 128) {
         showMessage(
           $("passwordMessage"),
-          "A nova senha precisa ter entre 12 e 128 caracteres.",
+          "A nova senha precisa ter entre 10 e 128 caracteres.",
           "error"
         );
         return;
@@ -377,17 +341,31 @@
       button.textContent = "Alterando...";
 
       try {
-        await callFunction({
-          acao: "alterar_senha",
-          senhaAtual: atual,
-          novaSenha: nova
-        });
+        // Confirma a senha atual reautenticando a conta.
+        const { error: loginError } =
+          await supabase.auth.signInWithPassword({
+            email: currentUser.email,
+            password: atual
+          });
+
+        if (loginError) {
+          throw new Error("A senha atual está incorreta.");
+        }
+
+        const { error: updateError } =
+          await supabase.auth.updateUser({
+            password: nova
+          });
+
+        if (updateError) {
+          throw updateError;
+        }
 
         $("changePasswordForm").reset();
 
         showMessage(
           $("passwordMessage"),
-          "Senha de segurança alterada com sucesso.",
+          "Senha da sua conta alterada com sucesso.",
           "success"
         );
 
@@ -410,13 +388,11 @@
   // ======================================
 
   $("logoutButton").addEventListener("click", async () => {
-    securityUnlocked = false;
-
     try {
-      await window.schoollinkAuth.signOut();
+      await supabase.auth.signOut();
       window.location.href = "index.html";
     } catch (error) {
-      console.error(error);
+      console.error("[SchoolLink] Erro ao sair:", error);
     }
   });
 
@@ -428,17 +404,13 @@
   // INICIALIZAÇÃO
   // ======================================
 
-  if (
-    !window.schoollinkFirebaseReady ||
-    !window.schoollinkAuth ||
-    !window.schoollinkDb
-  ) {
+  if (!supabase || !window.schoollinkSupabaseReady) {
     denyAccess(
-      "Não foi possível inicializar o Firebase. Verifique os arquivos de configuração."
+      "Não foi possível inicializar o Supabase. Verifique os arquivos de configuração."
     );
     return;
   }
 
-  window.schoollinkAuth.onAuthStateChanged(initializePage);
+  initializePage();
 
 })();
