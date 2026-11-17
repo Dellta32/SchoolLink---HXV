@@ -166,9 +166,7 @@
       return "E-mail ou senha incorretos.";
     }
 
-    if (
-      normalized.includes("email not confirmed")
-    ) {
+    if (normalized.includes("email not confirmed")) {
       return "Seu e-mail ainda não foi confirmado. Verifique sua caixa de entrada.";
     }
 
@@ -277,15 +275,23 @@
         .from("turmas")
         .select("id,nome,codigo,curso,ano_escolar,turma,turno")
         .eq("ativa", true)
+        .order("curso", { ascending: true })
         .order("ano_escolar", { ascending: true })
-        .order("nome", { ascending: true });
+        .order("turma", { ascending: true });
 
       if (error) throw error;
 
       turmasCache = data || [];
 
-      select.innerHTML =
-        '<option value="" selected disabled>Selecione sua turma</option>';
+      select.replaceChildren();
+
+      const inicial = document.createElement("option");
+      inicial.value = "";
+      inicial.textContent = "Selecione sua turma";
+      inicial.disabled = true;
+      inicial.selected = true;
+
+      select.appendChild(inicial);
 
       if (!turmasCache.length) {
         select.innerHTML =
@@ -293,13 +299,69 @@
         return;
       }
 
-      turmasCache.forEach(turma => {
-        const option = document.createElement("option");
+      // Ordem visual dos grupos no formulário.
+      const cursos = [
+        {
+          codigo: "INFO",
+          nome: "Informática"
+        },
+        {
+          codigo: "ADM",
+          nome: "Administração"
+        }
+      ];
 
-        option.value = turma.id;
-        option.textContent = nomeTurma(turma);
+      cursos.forEach(curso => {
+        const turmasCurso = turmasCache.filter(
+          turma => turma.curso === curso.codigo
+        );
 
-        select.appendChild(option);
+        if (!turmasCurso.length) return;
+
+        const grupo = document.createElement("optgroup");
+        grupo.label = curso.nome;
+
+        turmasCurso.forEach(turma => {
+          const option = document.createElement("option");
+
+          option.value = turma.id;
+          option.textContent = nomeTurma(turma);
+
+          grupo.appendChild(option);
+        });
+
+        select.appendChild(grupo);
+      });
+
+      // Caso novas categorias de curso sejam adicionadas futuramente.
+      const cursosConhecidos = cursos.map(c => c.codigo);
+
+      const outrosCursos = [
+        ...new Set(
+          turmasCache
+            .map(t => t.curso)
+            .filter(curso =>
+              curso && !cursosConhecidos.includes(curso)
+            )
+        )
+      ];
+
+      outrosCursos.forEach(codigo => {
+        const grupo = document.createElement("optgroup");
+        grupo.label = codigo;
+
+        turmasCache
+          .filter(turma => turma.curso === codigo)
+          .forEach(turma => {
+            const option = document.createElement("option");
+
+            option.value = turma.id;
+            option.textContent = nomeTurma(turma);
+
+            grupo.appendChild(option);
+          });
+
+        select.appendChild(grupo);
       });
 
       console.log(
@@ -312,6 +374,8 @@
         "[SchoolLink] Erro ao carregar turmas:",
         error
       );
+
+      turmasCache = [];
 
       select.innerHTML =
         '<option value="">Erro ao carregar turmas</option>';
@@ -1194,10 +1258,12 @@
 
       if (!user.email_confirmed_at) {
         await supabase.auth.signOut();
+
         showError(
           "erroLoginAluno",
           "Seu e-mail ainda não foi confirmado. Verifique sua caixa de entrada."
         );
+
         return;
       }
 
@@ -1397,13 +1463,16 @@
         }
 
         /*
-         * Com confirmação de e-mail habilitada,
-         * o Supabase não deve criar uma sessão ativa
-         * até o usuário confirmar o endereço.
+         * A confirmação de e-mail precisa estar habilitada
+         * em Authentication > Sign In / Providers > Email.
          */
 
         if (data.session) {
           await supabase.auth.signOut();
+
+          throw new Error(
+            "A confirmação obrigatória de e-mail não está habilitada no Supabase. Ative essa opção antes de permitir novos cadastros."
+          );
         }
 
         $("#formCadastroAluno").reset();
