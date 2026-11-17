@@ -1,54 +1,129 @@
-
 /* SchoolLink HXV — Corpo docente
- * Dados e sessão exclusivamente no Firebase.
- * Arquivos: Supabase Storage via Edge Function.
- * Turmas: IDs padronizados pelo SchoolLinkTurmas.
- * Acesso: somente professor/gestor ativo.
+ *
+ * Autenticação: Supabase Auth
+ * Perfis: Supabase Database
+ * Publicações: PostgreSQL
+ * Turmas: tabela public.turmas
+ * Arquivos: Supabase Storage
+ *
+ * Acesso: somente professores e gestores ativos.
  */
 
 (() => {
   "use strict";
 
-  const $ = (s, root = document) => root.querySelector(s);
-  const $$ = (s, root = document) => [...root.querySelectorAll(s)];
+  // =========================================
+  // CONFIGURAÇÕES
+  // =========================================
 
   const MAX_FILES = 5;
   const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
-  let files = [];
-  let editingId = null;
-  let posts = [];
+  // Precisa corresponder ao nome do bucket no Supabase.
+  const STORAGE_BUCKET = "schoollink-arquivos";
 
+  const $ = (selector, root = document) =>
+    root.querySelector(selector);
+
+  const $$ = (selector, root = document) =>
+    [...root.querySelectorAll(selector)];
+
+  const supabase = window.schoollinkSupabase;
+
+  let files = [];
+  let posts = [];
+  let turmasCache = [];
+
+  let editingId = null;
+  let currentUser = null;
   let authorizedUid = null;
   let authCheckId = 0;
 
   // =========================================
-  // CONFIGURAÇÕES E UTILITÁRIOS
+  // CATEGORIAS
   // =========================================
 
-  const ready = () =>
-    Boolean(
-      window.schoollinkFirebaseReady &&
-      window.schoollinkAuth &&
-      window.schoollinkDb
-    );
+  const CATEGORIAS = {
+    anuncio: "Anúncio",
+    evento: "Evento",
+    comunicado: "Comunicado",
+    conteudo: "Conteúdo",
+    atividade: "Atividade"
+  };
 
-  const esc = value =>
-    String(value ?? "").replace(/[&<>"']/g, char => ({
+  function normalizeText(value) {
+    return String(value ?? "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim()
+      .toLowerCase();
+  }
+
+  function categoriaParaBanco(value) {
+    const normalized = normalizeText(value);
+
+    const categorias = {
+      anuncio: "anuncio",
+      evento: "evento",
+      comunicado: "comunicado",
+      conteudo: "conteudo",
+      atividade: "atividade"
+    };
+
+    return categorias[normalized] || null;
+  }
+
+  function categoriaParaTela(value) {
+    return CATEGORIAS[value] || value || "Anúncio";
+  }
+
+  // =========================================
+  // UTILITÁRIOS
+  // =========================================
+
+  function esc(value) {
+    return String(value ?? "").replace(/[&<>"']/g, char => ({
       "&": "&amp;",
       "<": "&lt;",
       ">": "&gt;",
       '"': "&quot;",
       "'": "&#39;"
-    }[char]));
+    })[char]);
+  }
 
-  const dateFmt = value =>
-    value
-      ? new Date(value + "T12:00:00").toLocaleDateString("pt-BR")
-      : "";
+  function dateFmt(value) {
+    if (!value) return "";
+
+    const date = new Date(`${value}T12:00:00`);
+
+    if (Number.isNaN(date.getTime())) {
+      return "";
+    }
+
+    return date.toLocaleDateString("pt-BR");
+  }
+
+  function listen(selector, eventName, callback) {
+    const element = $(selector);
+
+    if (element) {
+      element.addEventListener(eventName, callback);
+    }
+
+    return element;
+  }
+
+  function setHidden(selector, hidden) {
+    const element = $(selector);
+
+    if (element) {
+      element.hidden = hidden;
+    }
+  }
 
   function err(selector, message) {
     const element = $(selector);
+
     if (!element) return;
 
     element.textContent = message;
@@ -57,29 +132,36 @@
 
   function clearErr(selector) {
     const element = $(selector);
+
     if (!element) return;
 
     element.textContent = "";
     element.hidden = true;
   }
 
-  function firebaseReady() {
-    return ready();
+  function showMessage(element, message, type = "") {
+    if (!element) return;
+
+    element.textContent = message;
+    element.className = `message ${type}`;
   }
 
-  // =========================================
-  // STATUS VISUAL DOS SERVIÇOS
-  // =========================================
-
-  function getSupabaseReady() {
-    const config = window.SCHOOLLINK_SUPABASE_CONFIG;
-
+  function supabaseReady() {
     return Boolean(
       window.schoollinkSupabaseReady &&
-      config?.url &&
-      config?.publishableKey
+      supabase &&
+      typeof supabase.from === "function" &&
+      supabase.auth
     );
   }
+
+  function normalizeId(value) {
+    return String(value ?? "").trim();
+  }
+
+  // =========================================
+  // STATUS DO SERVIÇO
+  // =========================================
 
   function removeServiceStatus() {
     $("#schoollinkServiceStatus")?.remove();
@@ -89,6 +171,7 @@
     if ($("#schoollinkServiceStatusStyles")) return;
 
     const style = document.createElement("style");
+
     style.id = "schoollinkServiceStatusStyles";
 
     style.textContent = `
@@ -96,11 +179,9 @@
         box-sizing: border-box;
         display: flex;
         align-items: center;
-        justify-content: flex-start;
-        flex-wrap: wrap;
-        gap: 10px 20px;
+        gap: 10px;
         width: 100%;
-        margin: 18px 0 0;
+        margin-top: 18px;
         padding: 12px 16px;
         border: 1px solid rgba(128,128,128,.18);
         border-radius: 12px;
@@ -110,64 +191,28 @@
         font-size: 13px;
       }
 
-      #schoollinkServiceStatus .schoollink-service-status__item {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        min-width: 0;
-        white-space: nowrap;
-      }
-
-      #schoollinkServiceStatus .schoollink-service-status__dot {
-        display: inline-block;
+      #schoollinkServiceStatus .service-dot {
         flex: 0 0 9px;
         width: 9px;
         height: 9px;
         border-radius: 50%;
-      }
-
-      #schoollinkServiceStatus .is-ready {
         background: #22c55e;
         box-shadow: 0 0 0 3px rgba(34,197,94,.13);
       }
 
-      #schoollinkServiceStatus .is-offline {
-        background: #ef4444;
-        box-shadow: 0 0 0 3px rgba(239,68,68,.13);
-      }
-
-      #schoollinkServiceStatus .schoollink-service-status__name {
+      #schoollinkServiceStatus .service-name {
         font-weight: 700;
       }
 
-      #schoollinkServiceStatus .schoollink-service-status__state {
+      #schoollinkServiceStatus .service-state {
         opacity: .75;
       }
 
-      /* Remove o indicador antigo que mostrava apenas Firebase */
-      #painelDocente .area-docente__topo > .area-status {
-        display: none !important;
-      }
-
-      @media (max-width: 768px) {
+      @media(max-width: 768px) {
         #schoollinkServiceStatus {
-          justify-content: flex-start;
-          gap: 12px 18px;
-          width: 100%;
-          margin: 16px 0 0;
+          margin-top: 16px;
           padding: 12px;
           font-size: 12px;
-        }
-      }
-
-      @media (max-width: 380px) {
-        #schoollinkServiceStatus {
-          gap: 10px 14px;
-          padding: 10px 8px;
-        }
-
-        #schoollinkServiceStatus .schoollink-service-status__state {
-          display: none;
         }
       }
     `;
@@ -175,477 +220,53 @@
     document.head.appendChild(style);
   }
 
-  function getServiceStatusPosition() {
-    const topo = $("#painelDocente .area-docente__topo");
-    if (!topo) return null;
-
-    const intro = topo.querySelector(":scope > div");
-
-    if (!intro) return null;
-
-    return {
-      parent: intro
-    };
-  }
-
-  function createServiceStatus() {
-    let status = $("#schoollinkServiceStatus");
-
-    if (status) return status;
-
-    status = document.createElement("div");
-    status.id = "schoollinkServiceStatus";
-    status.setAttribute("role", "status");
-    status.setAttribute("aria-label", "Status dos serviços");
-
-    return status;
-  }
-
   function updateServiceStatus() {
-    // Só exibe o indicador para uma conta autorizada.
-    const user = window.schoollinkAuth?.currentUser;
+    const user = currentUser;
 
     if (
       !user ||
       !authorizedUid ||
-      authorizedUid !== user.uid ||
+      authorizedUid !== user.id ||
       $("#painelDocente")?.hidden
     ) {
       removeServiceStatus();
       return;
     }
 
+    const topo = $("#painelDocente .area-docente__topo");
+
+    if (!topo) return;
+
+    const intro = topo.querySelector(":scope > div");
+
+    if (!intro) return;
+
     addServiceStatusStyles();
 
-    const status = createServiceStatus();
-    const position = getServiceStatusPosition();
+    let status = $("#schoollinkServiceStatus");
 
-    if (!position) return;
-
-    if (status.parentNode !== position.parent) {
-      position.parent.appendChild(status);
-    } else if (position.parent.lastElementChild !== status) {
-      position.parent.appendChild(status);
+    if (!status) {
+      status = document.createElement("div");
+      status.id = "schoollinkServiceStatus";
+      status.setAttribute("role", "status");
+      status.setAttribute("aria-label", "Status do Supabase");
     }
 
-    const services = [
-      {
-        name: "Firebase",
-        ready: firebaseReady()
-      },
-      {
-        name: "Supabase",
-        ready: getSupabaseReady()
-      }
-    ];
+    if (status.parentNode !== intro) {
+      intro.appendChild(status);
+    }
 
-    status.innerHTML = services.map(service => `
-      <span
-        class="schoollink-service-status__item"
-        title="${service.name}: ${
-          service.ready ? "Inicializado" : "Não inicializado"
-        }"
-      >
-        <span
-          class="schoollink-service-status__dot ${
-            service.ready ? "is-ready" : "is-offline"
-          }"
-          aria-hidden="true"
-        ></span>
-
-        <span class="schoollink-service-status__name">
-          ${service.name}:
-        </span>
-
-        <span class="schoollink-service-status__state">
-          ${service.ready ? "Inicializado" : "Não inicializado"}
-        </span>
+    status.innerHTML = `
+      <span class="service-dot" aria-hidden="true"></span>
+      <span class="service-name">Supabase:</span>
+      <span class="service-state">
+        ${supabaseReady() ? "Inicializado" : "Indisponível"}
       </span>
-    `).join("");
+    `;
   }
 
   // =========================================
-  // SISTEMA DE TURMAS
-  // =========================================
-
-  function normalizeTurmaId(value) {
-    return String(value || "")
-      .trim()
-      .toUpperCase()
-      .replace(/\s+/g, "");
-  }
-
-  function getTurma(id) {
-    const turmaId = normalizeTurmaId(id);
-
-    if (!turmaId) return null;
-
-    return window.SchoolLinkTurmas?.obter(turmaId) || null;
-  }
-
-  function getDest() {
-    return $('input[name="destinatario"]:checked')?.value || "todos";
-  }
-
-  function getTurmaContainer() {
-    return $("#blocoTurmas .area-turmas__opcoes");
-  }
-
-  function getTurmas() {
-    const container = getTurmaContainer();
-
-    if (!container) return [];
-
-    return [
-      ...new Set(
-        $$('input[type="checkbox"]:checked', container)
-          .map(input => normalizeTurmaId(input.value))
-          .filter(Boolean)
-      )
-    ];
-  }
-
-  function validateTurmas(turmas) {
-    if (!Array.isArray(turmas) || !turmas.length) {
-      throw Error("Selecione pelo menos uma turma.");
-    }
-
-    const invalidas = turmas.filter(id => !getTurma(id));
-
-    if (invalidas.length) {
-      throw Error(
-        "As seguintes turmas não foram encontradas no catálogo: " +
-        invalidas.join(", ") +
-        ". Confira o arquivo turmas.js."
-      );
-    }
-  }
-
-  function initializeTurmas(selecionadas = []) {
-    const container = getTurmaContainer();
-
-    if (!container) {
-      console.error(
-        "[SchoolLink] Container de turmas não encontrado."
-      );
-      return;
-    }
-
-    if (!window.SchoolLinkTurmas) {
-      console.error(
-        "[SchoolLink] O catálogo turmas.js não foi carregado."
-      );
-
-      err(
-        "#erroPublicacao",
-        "Não foi possível carregar o catálogo de turmas."
-      );
-
-      return;
-    }
-
-    const ids = selecionadas.map(normalizeTurmaId);
-
-    window.SchoolLinkTurmas.criarCheckboxes(
-      container,
-      ids
-    );
-  }
-
-  function updateDest() {
-    const destino = getDest();
-    const bloco = $("#blocoTurmas");
-
-    if (bloco) {
-      bloco.hidden = destino !== "turmas";
-    }
-
-    const turmas = getTurmas();
-    const preview = $("#previewDestino");
-
-    if (!preview) return;
-
-    preview.textContent =
-      destino === "todos"
-        ? "Visível para toda a comunidade escolar"
-        : destino === "alunos"
-          ? "Visível para estudantes"
-          : "Visível às turmas: " +
-            (turmas.join(", ") || "selecione as turmas");
-  }
-
-  // =========================================
-  // PRÉVIA DA PUBLICAÇÃO
-  // =========================================
-
-  function updatePreview() {
-    const tipo = $("#tipoPublicacao");
-    const titulo = $("#tituloPublicacao");
-    const descricao = $("#descricaoPublicacao");
-    const importancia = $("#importanciaPublicacao");
-    const data = $("#dataPublicacao");
-
-    if (!tipo || !titulo || !descricao || !importancia || !data) {
-      return;
-    }
-
-    $("#previewTipo").textContent = tipo.value;
-
-    $("#previewTitulo").textContent =
-      titulo.value.trim() || "Título da publicação";
-
-    $("#previewDescricao").textContent =
-      descricao.value.trim() ||
-      "A descrição da publicação aparecerá aqui enquanto você preenche o formulário.";
-
-    $("#previewImportancia").textContent = ({
-      normal: "Normal",
-      importante: "Importante",
-      urgente: "Urgente"
-    })[importancia.value] || "Normal";
-
-    $("#previewImportancia").className =
-      "area-tag area-tag--" + importancia.value;
-
-    $("#previewData").hidden = !data.value;
-
-    $("#previewData").textContent = data.value
-      ? (
-          ["Atividade", "Evento"].includes(tipo.value)
-            ? "Data: "
-            : "Prazo: "
-        ) + dateFmt(data.value)
-      : "";
-
-    updateDest();
-  }
-
-  // =========================================
-  // NAVEGAÇÃO
-  // =========================================
-
-  function showTab(name) {
-    $$("[data-doc-painel]").forEach(element => {
-      element.classList.toggle(
-        "is-visible",
-        element.dataset.docPainel === name
-      );
-    });
-
-    $$("[data-doc-secao]").forEach(element => {
-      const active = element.dataset.docSecao === name;
-
-      element.classList.toggle("is-active", active);
-      element.setAttribute("aria-selected", String(active));
-    });
-  }
-
-  // =========================================
-  // ARQUIVOS
-  // =========================================
-
-  function cleanup() {
-    files.forEach(item => {
-      if (item.preview) {
-        URL.revokeObjectURL(item.preview);
-      }
-    });
-
-    files = [];
-  }
-
-  function showFiles() {
-    cleanup();
-
-    const input = $("#arquivosPublicacao");
-    const selected = [...input.files];
-
-    if (selected.length > MAX_FILES) {
-      err(
-        "#erroPublicacao",
-        `Selecione no máximo ${MAX_FILES} arquivos.`
-      );
-
-      input.value = "";
-      return;
-    }
-
-    const bad = selected.find(
-      file => file.size > MAX_FILE_SIZE
-    );
-
-    if (bad) {
-      err(
-        "#erroPublicacao",
-        `O arquivo "${bad.name}" excede 10 MB.`
-      );
-
-      input.value = "";
-      return;
-    }
-
-    clearErr("#erroPublicacao");
-
-    files = selected.map(file => ({
-      file,
-      name: file.name,
-      type: file.type,
-      size: file.size,
-
-      preview: file.type.startsWith("image/")
-        ? URL.createObjectURL(file)
-        : null
-    }));
-
-    $("#listaArquivos").innerHTML =
-      files.map(item => `
-        <div class="area-arquivos__item">
-          <span>▧</span>
-
-          <div>
-            <strong>${esc(item.name)}</strong>
-
-            <small>
-              ${(item.size / 1048576).toFixed(2)} MB
-            </small>
-          </div>
-        </div>
-      `).join("");
-
-    $("#previewAnexos").innerHTML =
-      files.map(item => `
-        <div class="area-preview__arquivo">
-          ${
-            item.preview
-              ? `<img src="${item.preview}" alt="Prévia de ${esc(item.name)}">`
-              : '<span aria-hidden="true">▤</span>'
-          }
-
-          <span>${esc(item.name)}</span>
-        </div>
-      `).join("");
-  }
-
-  // =========================================
-  // LISTAGEM DE PUBLICAÇÕES
-  // =========================================
-
-  function renderPosts() {
-    const filter = $("#filtroTipoDocente")?.value || "todos";
-
-    const items = posts.filter(post =>
-      post.status !== "arquivado" &&
-      (
-        filter === "todos" ||
-        post.tipo === filter
-      )
-    );
-
-    $("#listaPublicacoes").innerHTML =
-      items.map(post => {
-        const turmas = Array.isArray(post.turmas)
-          ? post.turmas.map(normalizeTurmaId)
-          : [];
-
-        return `
-          <article class="area-lista__item">
-
-            <span class="area-lista__marcador">
-              ${
-                post.tipo === "Atividade"
-                  ? "✓"
-                  : post.tipo === "Evento"
-                    ? "▦"
-                    : "▤"
-              }
-            </span>
-
-            <div class="area-lista__corpo">
-
-              <h3>${esc(post.titulo)}</h3>
-
-              <p>${esc(post.descricao)}</p>
-
-              <div class="area-lista__meta">
-
-                <span class="area-tag">
-                  ${esc(post.tipo)}
-                </span>
-
-                <span>
-                  ${
-                    post.destino === "turmas"
-                      ? esc(turmas.join(", "))
-                      : post.destino === "alunos"
-                        ? "Estudantes"
-                        : "Todos"
-                  }
-                </span>
-
-                ${
-                  post.data
-                    ? `<span>${esc(dateFmt(post.data))}</span>`
-                    : ""
-                }
-
-              </div>
-
-              <div class="area-publicacao__item-acoes">
-
-                <button
-                  type="button"
-                  class="area-mini-button"
-                  data-edit="${esc(post.id)}"
-                >
-                  Editar
-                </button>
-
-                <button
-                  type="button"
-                  class="area-mini-button area-mini-button--danger"
-                  data-archive="${esc(post.id)}"
-                >
-                  Arquivar
-                </button>
-
-              </div>
-
-            </div>
-          </article>
-        `;
-      }).join("") ||
-      '<p class="area-empty">Nenhuma publicação encontrada.</p>';
-  }
-
-  async function refreshPosts() {
-    const user = window.schoollinkAuth.currentUser;
-
-    if (!user || authorizedUid !== user.uid) {
-      throw Error("Acesso não autorizado ao painel docente.");
-    }
-
-    const snap = await window.schoollinkDb
-      .collection("publicacoes")
-      .orderBy("criadoEm", "desc")
-      .get();
-
-    if (
-      !window.schoollinkAuth.currentUser ||
-      authorizedUid !== user.uid
-    ) {
-      return;
-    }
-
-    posts = snap.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
-
-    renderPosts();
-  }
-
-  // =========================================
-  // ACESSO NEGADO E AUTORIZAÇÃO
+  // ACESSO E AUTORIZAÇÃO
   // =========================================
 
   function createAccessDeniedPanel() {
@@ -654,6 +275,7 @@
     if (panel) return panel;
 
     panel = document.createElement("section");
+
     panel.id = "acessoNegadoDocente";
     panel.hidden = true;
     panel.setAttribute("role", "alert");
@@ -695,26 +317,6 @@
     return panel;
   }
 
-  function denyAccess(message) {
-    authorizedUid = null;
-    posts = [];
-
-    // Remove o indicador quando o acesso é negado.
-    removeServiceStatus();
-
-    $("#painelLoginDocente").hidden = true;
-    $("#painelDocente").hidden = true;
-    $("#btnSairDocente").hidden = true;
-
-    const panel = createAccessDeniedPanel();
-
-    $("#mensagemAcessoNegado").textContent =
-      message ||
-      "Esta área é exclusiva para professores e gestores do SchoolLink HXV.";
-
-    panel.hidden = false;
-  }
-
   function clearAccessDenied() {
     const panel = $("#acessoNegadoDocente");
 
@@ -723,45 +325,99 @@
     }
   }
 
-  async function verifyDocenteAccess(user) {
-    const currentCheck = ++authCheckId;
-
+  function denyAccess(message) {
     authorizedUid = null;
+    currentUser = null;
+    posts = [];
 
-    // Não exibe status enquanto a autorização está sendo verificada.
     removeServiceStatus();
 
-    $("#painelLoginDocente").hidden = true;
-    $("#painelDocente").hidden = true;
-    $("#btnSairDocente").hidden = true;
+    setHidden("#painelLoginDocente", true);
+    setHidden("#painelDocente", true);
+    setHidden("#btnSairDocente", true);
+
+    const panel = createAccessDeniedPanel();
+
+    const messageElement = $("#mensagemAcessoNegado");
+
+    if (messageElement) {
+      messageElement.textContent =
+        message ||
+        "Esta área é exclusiva para professores e gestores ativos.";
+    }
+
+    panel.hidden = false;
+  }
+
+  function showLogin(message = "") {
+    authorizedUid = null;
+    currentUser = null;
+    posts = [];
+
+    removeServiceStatus();
+
+    setHidden("#painelLoginDocente", false);
+    setHidden("#painelDocente", true);
+    setHidden("#btnSairDocente", true);
 
     clearAccessDenied();
 
-    if (!ready()) {
+    if (message) {
+      err("#erroLoginDocente", message);
+    }
+  }
+
+  async function verifyDocenteAccess(user) {
+    const checkId = ++authCheckId;
+
+    authorizedUid = null;
+    currentUser = null;
+
+    removeServiceStatus();
+
+    setHidden("#painelLoginDocente", true);
+    setHidden("#painelDocente", true);
+    setHidden("#btnSairDocente", true);
+
+    clearAccessDenied();
+
+    if (!supabaseReady()) {
       denyAccess(
-        "Não foi possível verificar sua conta porque o Firebase não está inicializado."
+        "Não foi possível inicializar o Supabase. Confira os arquivos de configuração."
       );
 
       return;
     }
 
     try {
-      const profileSnap = await window.schoollinkDb
-        .collection("perfis")
-        .doc(user.uid)
-        .get();
+      const { data: perfil, error } = await supabase
+        .from("perfis")
+        .select("id, nome, papel, ativo")
+        .eq("id", user.id)
+        .maybeSingle();
 
-      if (currentCheck !== authCheckId) return;
+      if (checkId !== authCheckId) return;
 
-      if (!profileSnap.exists) {
+      if (error) {
+        console.error(
+          "[SchoolLink] Erro ao consultar perfil:",
+          error
+        );
+
+        denyAccess(
+          "Não foi possível verificar suas permissões no banco de dados."
+        );
+
+        return;
+      }
+
+      if (!perfil) {
         denyAccess(
           "Não encontramos um perfil institucional associado a esta conta. Entre em contato com a gestão escolar."
         );
 
         return;
       }
-
-      const perfil = profileSnap.data();
 
       const papelAutorizado = [
         "professor",
@@ -770,73 +426,709 @@
 
       if (!papelAutorizado || perfil.ativo !== true) {
         denyAccess(
-          "Esta área é exclusiva para professores e gestores ativos do SchoolLink HXV. Sua conta não possui autorização para acessá-la."
+          "Esta área é exclusiva para professores e gestores ativos do SchoolLink HXV."
         );
 
         return;
       }
 
-      authorizedUid = user.uid;
+      currentUser = user;
+      authorizedUid = user.id;
 
-      enter(user);
+      await enter(user, perfil);
 
     } catch (error) {
       console.error(
-        "[SchoolLink] Erro ao verificar autorização:",
+        "[SchoolLink] Erro na autorização:",
         error
       );
 
-      if (currentCheck !== authCheckId) return;
+      if (checkId !== authCheckId) return;
 
       denyAccess(
-        "Não foi possível verificar sua autorização. Tente novamente ou entre em contato com a gestão escolar."
+        "Ocorreu um erro ao verificar sua autorização."
       );
     }
   }
 
+  async function getAuthorizedUser() {
+    if (!supabaseReady()) {
+      throw Error("Supabase não está inicializado.");
+    }
+
+    const { data, error } = await supabase.auth.getUser();
+
+    if (error || !data.user) {
+      throw Error("Sua sessão expirou. Entre novamente.");
+    }
+
+    if (
+      !authorizedUid ||
+      data.user.id !== authorizedUid
+    ) {
+      throw Error("Você não possui autorização para esta operação.");
+    }
+
+    return data.user;
+  }
+
   // =========================================
-  // ENTRAR E SAIR
+  // TURMAS — SUPABASE
   // =========================================
 
-  function enter(user) {
-    if (!user || authorizedUid !== user.uid) return;
+  function getTurmaContainer() {
+    return $("#blocoTurmas .area-turmas__opcoes");
+  }
 
-    clearAccessDenied();
+  function getTurmaById(id) {
+    const turmaId = normalizeId(id);
 
-    $("#painelLoginDocente").hidden = true;
-    $("#painelDocente").hidden = false;
-    $("#btnSairDocente").hidden = false;
+    return turmasCache.find(
+      turma => turma.id === turmaId
+    ) || null;
+  }
 
-    // O indicador só é criado após a autorização.
-    updateServiceStatus();
+  function getSelectedTurmas() {
+    const container = getTurmaContainer();
 
-    refreshPosts().catch(error => {
-      err(
-        "#erroPublicacao",
-        "Não foi possível carregar as publicações: " +
-        error.message
+    if (!container) return [];
+
+    return [
+      ...new Set(
+        $$('input[type="checkbox"]:checked', container)
+          .map(input => normalizeId(input.value))
+          .filter(Boolean)
+      )
+    ];
+  }
+
+  function validateTurmas(ids) {
+    if (!Array.isArray(ids) || !ids.length) {
+      throw Error("Selecione pelo menos uma turma.");
+    }
+
+    const invalidas = ids.filter(
+      id => !getTurmaById(id)
+    );
+
+    if (invalidas.length) {
+      throw Error(
+        "Uma ou mais turmas selecionadas não foram encontradas. Atualize a página e tente novamente."
+      );
+    }
+  }
+
+  function initializeTurmas(selecionadas = []) {
+    const container = getTurmaContainer();
+
+    if (!container) {
+      console.error(
+        "[SchoolLink] Container de turmas não encontrado."
+      );
+
+      return;
+    }
+
+    const selectedIds = new Set(
+      selecionadas.map(normalizeId)
+    );
+
+    container.replaceChildren();
+
+    if (!turmasCache.length) {
+      const empty = document.createElement("p");
+
+      empty.className = "area-empty";
+      empty.textContent =
+        "Nenhuma turma ativa foi cadastrada.";
+
+      container.appendChild(empty);
+
+      return;
+    }
+
+    turmasCache.forEach(turma => {
+      const label = document.createElement("label");
+
+      label.className = "area-turmas__opcao";
+
+      const input = document.createElement("input");
+
+      input.type = "checkbox";
+      input.value = turma.id;
+      input.checked = selectedIds.has(turma.id);
+
+      const text = document.createElement("span");
+
+      text.textContent =
+        turma.nome ||
+        turma.codigo ||
+        "Turma sem nome";
+
+      label.append(input, text);
+
+      container.appendChild(label);
+    });
+  }
+
+  async function loadTurmas(selecionadas = []) {
+    const { data, error } = await supabase
+      .from("turmas")
+      .select(`
+        id,
+        nome,
+        codigo,
+        curso,
+        ano_escolar,
+        turma,
+        turno
+      `)
+      .eq("ativa", true)
+      .order("codigo", { ascending: true });
+
+    if (error) {
+      console.error(
+        "[SchoolLink] Erro ao carregar turmas:",
+        error
+      );
+
+      throw Error(
+        "Não foi possível carregar as turmas cadastradas."
+      );
+    }
+
+    turmasCache = data || [];
+
+    initializeTurmas(selecionadas);
+    updateDest();
+  }
+
+  function getDest() {
+    return (
+      $('input[name="destinatario"]:checked')?.value ||
+      "todos"
+    );
+  }
+
+  function updateDest() {
+    const destino = getDest();
+
+    const bloco = $("#blocoTurmas");
+
+    if (bloco) {
+      bloco.hidden = destino !== "turmas";
+    }
+
+    const preview = $("#previewDestino");
+
+    if (!preview) return;
+
+    if (destino === "todos") {
+      preview.textContent =
+        "Visível para toda a comunidade escolar";
+
+      return;
+    }
+
+    if (destino === "turmas") {
+      const ids = getSelectedTurmas();
+
+      const nomes = ids.map(id =>
+        getTurmaById(id)?.nome || id
+      );
+
+      preview.textContent =
+        "Visível às turmas: " +
+        (nomes.join(", ") || "selecione as turmas");
+
+      return;
+    }
+
+    preview.textContent =
+      "Destino ainda não configurado no banco de dados.";
+  }
+
+  // =========================================
+  // PRÉVIA DA PUBLICAÇÃO
+  // =========================================
+
+  function updatePreview() {
+    const tipo = $("#tipoPublicacao");
+    const titulo = $("#tituloPublicacao");
+    const descricao = $("#descricaoPublicacao");
+    const importancia = $("#importanciaPublicacao");
+    const data = $("#dataPublicacao");
+
+    if (
+      !tipo ||
+      !titulo ||
+      !descricao ||
+      !importancia ||
+      !data
+    ) {
+      return;
+    }
+
+    const previewTipo = $("#previewTipo");
+    const previewTitulo = $("#previewTitulo");
+    const previewDescricao = $("#previewDescricao");
+    const previewImportancia = $("#previewImportancia");
+    const previewData = $("#previewData");
+
+    if (previewTipo) {
+      previewTipo.textContent =
+        categoriaParaTela(tipo.value);
+    }
+
+    if (previewTitulo) {
+      previewTitulo.textContent =
+        titulo.value.trim() || "Título da publicação";
+    }
+
+    if (previewDescricao) {
+      previewDescricao.textContent =
+        descricao.value.trim() ||
+        "A descrição da publicação aparecerá aqui enquanto você preenche o formulário.";
+    }
+
+    if (previewImportancia) {
+      const importanciaLabel = {
+        normal: "Normal",
+        importante: "Importante",
+        urgente: "Urgente"
+      };
+
+      previewImportancia.textContent =
+        importanciaLabel[importancia.value] || "Normal";
+
+      previewImportancia.className =
+        "area-tag area-tag--" + importancia.value;
+    }
+
+    if (previewData) {
+      previewData.hidden = !data.value;
+
+      previewData.textContent = data.value
+        ? (
+            ["Atividade", "Evento"].includes(
+              categoriaParaTela(tipo.value)
+            )
+              ? "Data: "
+              : "Prazo: "
+          ) + dateFmt(data.value)
+        : "";
+    }
+
+    updateDest();
+  }
+
+  // =========================================
+  // NAVEGAÇÃO
+  // =========================================
+
+  function showTab(name) {
+    $$("[data-doc-painel]").forEach(element => {
+      element.classList.toggle(
+        "is-visible",
+        element.dataset.docPainel === name
+      );
+    });
+
+    $$("[data-doc-secao]").forEach(element => {
+      const active =
+        element.dataset.docSecao === name;
+
+      element.classList.toggle("is-active", active);
+
+      element.setAttribute(
+        "aria-selected",
+        String(active)
       );
     });
   }
 
-  async function exit() {
-    authorizedUid = null;
-    posts = [];
+  // =========================================
+  // ARQUIVOS
+  // =========================================
 
-    // Remove o indicador ao sair.
-    removeServiceStatus();
+  function cleanup() {
+    files.forEach(item => {
+      if (item.preview) {
+        URL.revokeObjectURL(item.preview);
+      }
+    });
 
-    try {
-      await window.schoollinkAuth.signOut();
-    } catch (error) {
-      console.error("[SchoolLink] Erro ao sair:", error);
+    files = [];
+  }
+
+  function showFiles() {
+    const input = $("#arquivosPublicacao");
+
+    if (!input) return;
+
+    cleanup();
+
+    const selected = [...input.files];
+
+    if (selected.length > MAX_FILES) {
+      err(
+        "#erroPublicacao",
+        `Selecione no máximo ${MAX_FILES} arquivos.`
+      );
+
+      input.value = "";
+      return;
     }
 
-    $("#painelLoginDocente").hidden = false;
-    $("#painelDocente").hidden = true;
-    $("#btnSairDocente").hidden = true;
+    const bad = selected.find(
+      file => file.size > MAX_FILE_SIZE
+    );
 
-    clearAccessDenied();
+    if (bad) {
+      err(
+        "#erroPublicacao",
+        `O arquivo "${bad.name}" excede o limite de 10 MB.`
+      );
+
+      input.value = "";
+      return;
+    }
+
+    clearErr("#erroPublicacao");
+
+    files = selected.map(file => ({
+      file,
+      name: file.name,
+      type: file.type,
+      size: file.size,
+
+      preview: file.type.startsWith("image/")
+        ? URL.createObjectURL(file)
+        : null
+    }));
+
+    const list = $("#listaArquivos");
+    const preview = $("#previewAnexos");
+
+    if (list) {
+      list.innerHTML = files.map(item => `
+        <div class="area-arquivos__item">
+          <span>▧</span>
+
+          <div>
+            <strong>${esc(item.name)}</strong>
+
+            <small>
+              ${(item.size / 1048576).toFixed(2)} MB
+            </small>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    if (preview) {
+      preview.innerHTML = files.map(item => `
+        <div class="area-preview__arquivo">
+          ${
+            item.preview
+              ? `<img src="${item.preview}" alt="Prévia de ${esc(item.name)}">`
+              : '<span aria-hidden="true">▤</span>'
+          }
+
+          <span>${esc(item.name)}</span>
+        </div>
+      `).join("");
+    }
+  }
+
+  function safeFileName(name) {
+    return String(name || "arquivo")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z0-9._-]/g, "_")
+      .slice(0, 120);
+  }
+
+  async function uploadFiles(publicacaoId, user) {
+    if (!files.length) return [];
+
+    const uploaded = [];
+
+    for (const item of files) {
+      await getAuthorizedUser();
+
+      const unique =
+        window.crypto?.randomUUID?.() ||
+        `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+      const path =
+        `${publicacaoId}/${unique}-${safeFileName(item.name)}`;
+
+      const { error: uploadError } = await supabase
+        .storage
+        .from(STORAGE_BUCKET)
+        .upload(path, item.file, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: item.type || "application/octet-stream"
+        });
+
+      if (uploadError) {
+        console.error(
+          "[SchoolLink] Erro no Storage:",
+          uploadError
+        );
+
+        throw Error(
+          `Não foi possível enviar "${item.name}": ${uploadError.message}`
+        );
+      }
+
+      const metadata = {
+        publicacao_id: publicacaoId,
+        nome_original: item.name,
+        caminho_storage: path,
+        tipo_mime: item.type || null,
+        tamanho_bytes: item.size
+      };
+
+      const { data, error: metadataError } = await supabase
+        .from("arquivos_publicacao")
+        .insert(metadata)
+        .select()
+        .single();
+
+      if (metadataError) {
+        await supabase
+          .storage
+          .from(STORAGE_BUCKET)
+          .remove([path]);
+
+        console.error(
+          "[SchoolLink] Erro ao salvar metadados:",
+          metadataError
+        );
+
+        throw Error(
+          `O arquivo "${item.name}" foi enviado, mas seus dados não puderam ser registrados.`
+        );
+      }
+
+      uploaded.push(data);
+    }
+
+    return uploaded;
+  }
+
+  // =========================================
+  // LISTAGEM DE PUBLICAÇÕES
+  // =========================================
+
+  function renderPosts() {
+    const container = $("#listaPublicacoes");
+
+    if (!container) return;
+
+    const filter =
+      $("#filtroTipoDocente")?.value || "todos";
+
+    const filterCategory =
+      filter === "todos"
+        ? "todos"
+        : categoriaParaBanco(filter) || filter;
+
+    const items = posts.filter(post =>
+      post.status !== "arquivado" &&
+      (
+        filterCategory === "todos" ||
+        post.categoria === filterCategory
+      )
+    );
+
+    container.innerHTML = items.map(post => {
+      const tipo = categoriaParaTela(post.categoria);
+
+      const turmas = Array.isArray(post.turmas)
+        ? post.turmas.map(turma =>
+            turma.nome || turma.codigo || turma.id
+          )
+        : [];
+
+      const destinoLabel =
+        post.destino === "turmas"
+          ? turmas.join(", ") || "Turmas selecionadas"
+          : "Todos";
+
+      return `
+        <article class="area-lista__item">
+
+          <span class="area-lista__marcador">
+            ${
+              post.categoria === "atividade"
+                ? "✓"
+                : post.categoria === "evento"
+                  ? "▦"
+                  : "▤"
+            }
+          </span>
+
+          <div class="area-lista__corpo">
+
+            <h3>${esc(post.titulo)}</h3>
+
+            <p>${esc(post.descricao)}</p>
+
+            <div class="area-lista__meta">
+
+              <span class="area-tag">
+                ${esc(tipo)}
+              </span>
+
+              <span>
+                ${esc(destinoLabel)}
+              </span>
+
+              ${
+                post.data_evento
+                  ? `<span>${esc(dateFmt(post.data_evento))}</span>`
+                  : ""
+              }
+
+            </div>
+
+            ${
+              post.arquivos?.length
+                ? `
+                  <div class="area-lista__arquivos">
+                    ${post.arquivos.map(file => `
+                      <span>${esc(file.nome_original)}</span>
+                    `).join("")}
+                  </div>
+                `
+                : ""
+            }
+
+            <div class="area-publicacao__item-acoes">
+
+              <button
+                type="button"
+                class="area-mini-button"
+                data-edit="${esc(post.id)}"
+              >
+                Editar
+              </button>
+
+              <button
+                type="button"
+                class="area-mini-button area-mini-button--danger"
+                data-archive="${esc(post.id)}"
+              >
+                Arquivar
+              </button>
+
+            </div>
+
+          </div>
+        </article>
+      `;
+    }).join("") ||
+    '<p class="area-empty">Nenhuma publicação encontrada.</p>';
+  }
+
+  async function refreshPosts() {
+    const user = await getAuthorizedUser();
+
+    const { data: publications, error } = await supabase
+      .from("publicacoes")
+      .select("*")
+      .order("criado_em", { ascending: false });
+
+    if (error) {
+      console.error(
+        "[SchoolLink] Erro ao consultar publicações:",
+        error
+      );
+
+      throw Error(
+        "Não foi possível carregar as publicações."
+      );
+    }
+
+    if (
+      !currentUser ||
+      authorizedUid !== user.id
+    ) {
+      return;
+    }
+
+    const rows = publications || [];
+    const ids = rows.map(post => post.id);
+
+    let turmaLinks = [];
+    let fileRows = [];
+
+    if (ids.length) {
+      const [turmaResult, fileResult] =
+        await Promise.all([
+          supabase
+            .from("publicacao_turmas")
+            .select("publicacao_id, turma_id")
+            .in("publicacao_id", ids),
+
+          supabase
+            .from("arquivos_publicacao")
+            .select("*")
+            .in("publicacao_id", ids)
+        ]);
+
+      if (turmaResult.error) {
+        throw Error(
+          "Não foi possível carregar as turmas das publicações."
+        );
+      }
+
+      if (fileResult.error) {
+        throw Error(
+          "Não foi possível carregar os arquivos das publicações."
+        );
+      }
+
+      turmaLinks = turmaResult.data || [];
+      fileRows = fileResult.data || [];
+    }
+
+    const turmaMap = new Map();
+    const fileMap = new Map();
+
+    turmaLinks.forEach(link => {
+      if (!turmaMap.has(link.publicacao_id)) {
+        turmaMap.set(link.publicacao_id, []);
+      }
+
+      const turma = getTurmaById(link.turma_id);
+
+      turmaMap.get(link.publicacao_id).push({
+        id: link.turma_id,
+        nome: turma?.nome || turma?.codigo || link.turma_id,
+        codigo: turma?.codigo || ""
+      });
+    });
+
+    fileRows.forEach(file => {
+      if (!fileMap.has(file.publicacao_id)) {
+        fileMap.set(file.publicacao_id, []);
+      }
+
+      fileMap.get(file.publicacao_id).push(file);
+    });
+
+    posts = rows.map(post => ({
+      ...post,
+      turmas: turmaMap.get(post.id) || [],
+      arquivos: fileMap.get(post.id) || []
+    }));
+
+    renderPosts();
   }
 
   // =========================================
@@ -844,15 +1136,28 @@
   // =========================================
 
   async function savePost() {
-    const tipo = $("#tipoPublicacao").value;
+    const user = await getAuthorizedUser();
+
+    const tipo = $("#tipoPublicacao")?.value || "";
+    const categoria = categoriaParaBanco(tipo);
+
     const destino = getDest();
 
-    const turmas = destino === "turmas"
-      ? getTurmas()
-      : [];
+    const titulo =
+      $("#tituloPublicacao")?.value.trim() || "";
 
-    const descricao = $("#descricaoPublicacao").value.trim();
-    const titulo = $("#tituloPublicacao").value.trim();
+    const descricao =
+      $("#descricaoPublicacao")?.value.trim() || "";
+
+    const importancia =
+      $("#importanciaPublicacao")?.value || "normal";
+
+    const dataEvento =
+      $("#dataPublicacao")?.value || null;
+
+    if (!categoria) {
+      throw Error("Selecione uma categoria válida.");
+    }
 
     if (!titulo) {
       throw Error("Informe um título.");
@@ -862,157 +1167,149 @@
       throw Error("Preencha a descrição.");
     }
 
+    if (
+      !["normal", "importante", "urgente"].includes(importancia)
+    ) {
+      throw Error("Selecione uma importância válida.");
+    }
+
+    if (destino === "alunos") {
+      throw Error(
+        "O destino exclusivo para estudantes ainda não está configurado no banco. Utilize 'Todos' ou 'Turmas' por enquanto."
+      );
+    }
+
+    if (!["todos", "turmas"].includes(destino)) {
+      throw Error("Selecione um destino válido.");
+    }
+
+    const turmas = destino === "turmas"
+      ? getSelectedTurmas()
+      : [];
+
     if (destino === "turmas") {
       validateTurmas(turmas);
     }
 
-    const user = window.schoollinkAuth.currentUser;
+    let disciplina = "Geral";
 
-    if (!user || authorizedUid !== user.uid) {
-      throw Error("Você não tem autorização para publicar.");
-    }
+    if (categoria === "conteudo") {
+      disciplina = (
+        prompt(
+          "Disciplina do conteúdo (ex.: Informática):",
+          editingId
+            ? posts.find(post => post.id === editingId)?.disciplina || "Informática"
+            : "Informática"
+        ) || "Informática"
+      ).trim();
 
-    const old = editingId
-      ? posts.find(post => post.id === editingId)
-      : null;
-
-    const anexos = [...(old?.arquivos || [])];
-
-    // CONFIGURAÇÃO DO SUPABASE
-
-    const config = window.SCHOOLLINK_SUPABASE_CONFIG;
-
-    if (files.length && !getSupabaseReady()) {
-      throw Error(
-        "Supabase não está configurado corretamente."
-      );
-    }
-
-    // ENDPOINT DA EDGE FUNCTION
-
-    const supabaseBaseUrl = config?.url
-      ? config.url.replace(/\/+$/, "")
-      : "";
-
-    const uploadEndpoint =
-      `${supabaseBaseUrl}/functions/v1/super-action`;
-
-    // ENVIO DOS ARQUIVOS
-
-    for (const item of files) {
-      if (
-        !window.schoollinkAuth.currentUser ||
-        authorizedUid !== user.uid
-      ) {
-        throw Error(
-          "Sua sessão não possui autorização para enviar arquivos."
-        );
+      if (!disciplina) {
+        throw Error("Informe a disciplina do conteúdo.");
       }
-
-      const token = await user.getIdToken();
-
-      const formData = new FormData();
-      formData.append("file", item.file);
-
-      const response = await fetch(
-        uploadEndpoint,
-        {
-          method: "POST",
-
-          headers: {
-            Authorization: `Bearer ${token}`,
-            apikey: config.publishableKey
-          },
-
-          body: formData
-        }
-      );
-
-      const result = await response.json().catch(() => ({}));
-
-      if (!response.ok || !result.success) {
-        throw Error(
-          result.error ||
-          `Falha ao enviar ${item.name}.`
-        );
-      }
-
-      anexos.push({
-        nome: result.nome,
-        tipo: result.tipo,
-        tamanho: result.tamanho,
-        caminho: result.caminho,
-        url: result.url
-      });
     }
 
-    // DISCIPLINA
-
-    const disciplina = tipo === "Conteúdo"
-      ? (
-          prompt(
-            "Disciplina do conteúdo (ex.: Informática):",
-            old?.disciplina || "Informática"
-          ) || "Informática"
-        ).trim()
-      : "Geral";
-
-    // CONFERE A AUTORIZAÇÃO ANTES DE SALVAR.
-
-    if (
-      !window.schoollinkAuth.currentUser ||
-      authorizedUid !== user.uid
-    ) {
-      throw Error(
-        "Sua sessão perdeu a autorização para publicar."
-      );
-    }
-
-    // MONTAGEM DA PUBLICAÇÃO
-
-    const post = {
-      tipo,
+    const payload = {
       titulo,
       descricao,
-
-      importancia: $("#importanciaPublicacao").value,
-
-      data: $("#dataPublicacao").value || "",
-
-      destino,
-
-      turmas,
-
+      categoria,
+      importancia,
+      data_evento: dataEvento,
       disciplina,
-
-      arquivos: anexos,
-
+      destino,
       status: "ativo",
-
-      criadoEm: old?.criadoEm ||
-        firebase.firestore.FieldValue.serverTimestamp(),
-
-      atualizadoEm:
-        firebase.firestore.FieldValue.serverTimestamp(),
-
-      autorUid: user.uid,
-
-      autorEmail: user.email || ""
+      atualizado_em: new Date().toISOString()
     };
 
+    let savedPublication;
+
     if (editingId) {
-      await window.schoollinkDb
-        .collection("publicacoes")
-        .doc(editingId)
-        .update(post);
+      const { data, error } = await supabase
+        .from("publicacoes")
+        .update(payload)
+        .eq("id", editingId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error(
+          "[SchoolLink] Erro ao atualizar publicação:",
+          error
+        );
+
+        throw Error(
+          "Não foi possível atualizar a publicação: " +
+          error.message
+        );
+      }
+
+      savedPublication = data;
 
     } else {
-      await window.schoollinkDb
-        .collection("publicacoes")
-        .add(post);
+      const { data, error } = await supabase
+        .from("publicacoes")
+        .insert({
+          ...payload,
+          autor_id: user.id
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error(
+          "[SchoolLink] Erro ao criar publicação:",
+          error
+        );
+
+        throw Error(
+          "Não foi possível criar a publicação: " +
+          error.message
+        );
+      }
+
+      savedPublication = data;
+    }
+
+    const publicationId = savedPublication.id;
+
+    // Atualiza os vínculos das turmas.
+    const { error: deleteLinksError } = await supabase
+      .from("publicacao_turmas")
+      .delete()
+      .eq("publicacao_id", publicationId);
+
+    if (deleteLinksError) {
+      throw Error(
+        "A publicação foi salva, mas não foi possível atualizar suas turmas: " +
+        deleteLinksError.message
+      );
+    }
+
+    if (turmas.length) {
+      const links = turmas.map(turmaId => ({
+        publicacao_id: publicationId,
+        turma_id: turmaId
+      }));
+
+      const { error: insertLinksError } = await supabase
+        .from("publicacao_turmas")
+        .insert(links);
+
+      if (insertLinksError) {
+        throw Error(
+          "A publicação foi salva, mas não foi possível vincular as turmas: " +
+          insertLinksError.message
+        );
+      }
+    }
+
+    // Envia os anexos ao Supabase Storage.
+    if (files.length) {
+      await uploadFiles(publicationId, user);
     }
 
     editingId = null;
+
+    return savedPublication;
   }
 
   // =========================================
@@ -1022,17 +1319,31 @@
   function resetForm() {
     const form = $("#formPublicacao");
 
-    form.reset();
+    if (form) {
+      form.reset();
+    }
 
-    $("#tipoPublicacao").value = "Anúncio";
-    $("#importanciaPublicacao").value = "normal";
+    if ($("#tipoPublicacao")) {
+      $("#tipoPublicacao").value = "Anúncio";
+    }
 
-    $("#blocoTurmas").hidden = true;
+    if ($("#importanciaPublicacao")) {
+      $("#importanciaPublicacao").value = "normal";
+    }
 
-    $("#listaArquivos").innerHTML = "";
-    $("#previewAnexos").innerHTML = "";
+    setHidden("#blocoTurmas", true);
 
-    $("#arquivosPublicacao").value = "";
+    if ($("#listaArquivos")) {
+      $("#listaArquivos").innerHTML = "";
+    }
+
+    if ($("#previewAnexos")) {
+      $("#previewAnexos").innerHTML = "";
+    }
+
+    if ($("#arquivosPublicacao")) {
+      $("#arquivosPublicacao").value = "";
+    }
 
     clearErr("#erroPublicacao");
 
@@ -1045,49 +1356,157 @@
   }
 
   // =========================================
+  // ENTRAR E SAIR
+  // =========================================
+
+  async function enter(user) {
+    if (!user || authorizedUid !== user.id) {
+      return;
+    }
+
+    clearAccessDenied();
+
+    setHidden("#painelLoginDocente", true);
+    setHidden("#painelDocente", false);
+    setHidden("#btnSairDocente", false);
+
+    updateServiceStatus();
+
+    try {
+      await loadTurmas();
+      await refreshPosts();
+    } catch (error) {
+      console.error(
+        "[SchoolLink] Erro ao carregar painel:",
+        error
+      );
+
+      err(
+        "#erroPublicacao",
+        error.message ||
+        "Não foi possível carregar os dados do painel."
+      );
+    }
+  }
+
+  async function exit() {
+    authorizedUid = null;
+    currentUser = null;
+    posts = [];
+
+    authCheckId++;
+
+    removeServiceStatus();
+
+    try {
+      const { error } = await supabase.auth.signOut();
+
+      if (error) {
+        throw error;
+      }
+
+    } catch (error) {
+      console.error(
+        "[SchoolLink] Erro ao sair:",
+        error
+      );
+
+      err(
+        "#erroLoginDocente",
+        "Não foi possível encerrar a sessão."
+      );
+
+      return;
+    }
+
+    showLogin();
+  }
+
+  // =========================================
   // LOGIN DOCENTE
   // =========================================
 
-  $("#formLoginDocente").addEventListener(
-    "submit",
-    async event => {
-      event.preventDefault();
+  listen("#formLoginDocente", "submit", async event => {
+    event.preventDefault();
 
-      clearErr("#erroLoginDocente");
+    clearErr("#erroLoginDocente");
 
-      if (!firebaseReady()) {
-        err(
-          "#erroLoginDocente",
-          window.schoollinkFirebaseError ||
-          "Firebase não inicializado. Confira firebase-config.js e sua conexão."
+    if (!supabaseReady()) {
+      err(
+        "#erroLoginDocente",
+        window.schoollinkSupabaseError ||
+        "Supabase não inicializado. Confira a configuração."
+      );
+
+      return;
+    }
+
+    const email =
+      $("#emailDocente")?.value.trim() || "";
+
+    const password =
+      $("#senhaDocente")?.value || "";
+
+    if (!email || !password) {
+      err(
+        "#erroLoginDocente",
+        "Informe seu e-mail e sua senha."
+      );
+
+      return;
+    }
+
+    const button = $(
+      'button[type="submit"]',
+      $("#formLoginDocente")
+    );
+
+    if (button) {
+      button.disabled = true;
+      button.textContent = "Entrando...";
+    }
+
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) {
+        const invalidCredential = [
+          "invalid_credentials",
+          "Invalid login credentials"
+        ].includes(error.code) ||
+        normalizeText(error.message).includes(
+          "invalid login credentials"
         );
 
-        return;
+        throw Error(
+          invalidCredential
+            ? "E-mail ou senha inválidos."
+            : error.message
+        );
       }
 
-      try {
-        await window.schoollinkAuth
-          .signInWithEmailAndPassword(
-            $("#emailDocente").value.trim(),
-            $("#senhaDocente").value
-          );
+    } catch (error) {
+      err(
+        "#erroLoginDocente",
+        error.message || "Não foi possível entrar."
+      );
 
-      } catch (error) {
-        err(
-          "#erroLoginDocente",
-          error.code === "auth/invalid-credential"
-            ? "E-mail ou senha inválidos."
-            : error.message || "Não foi possível entrar."
-        );
+    } finally {
+      if (button) {
+        button.disabled = false;
+        button.textContent = "Entrar";
       }
     }
-  );
+  });
 
   // =========================================
   // EVENTOS PRINCIPAIS
   // =========================================
 
-  $("#btnSairDocente").addEventListener("click", exit);
+  listen("#btnSairDocente", "click", exit);
 
   $$("[data-doc-secao]").forEach(button => {
     button.addEventListener("click", () => {
@@ -1097,8 +1516,7 @@
     });
   });
 
-  // PRÉVIA
-
+  // Prévia dos campos.
   [
     "tipoPublicacao",
     "tituloPublicacao",
@@ -1106,38 +1524,51 @@
     "importanciaPublicacao",
     "dataPublicacao"
   ].forEach(id => {
-    $("#" + id).addEventListener("input", updatePreview);
-    $("#" + id).addEventListener("change", updatePreview);
+    const element = $("#" + id);
+
+    if (!element) return;
+
+    element.addEventListener("input", updatePreview);
+    element.addEventListener("change", updatePreview);
   });
 
   $$('input[name="destinatario"]').forEach(input => {
     input.addEventListener("change", updateDest);
   });
 
-  // Listener delegado para checkboxes das turmas.
-
+  // Checkboxes das turmas são criados dinamicamente.
   const turmaContainer = getTurmaContainer();
 
   if (turmaContainer) {
     turmaContainer.addEventListener("change", event => {
-      if (event.target.matches('input[type="checkbox"]')) {
+      if (
+        event.target.matches('input[type="checkbox"]')
+      ) {
         updateDest();
       }
     });
   }
 
-  $("#arquivosPublicacao").addEventListener("change", showFiles);
+  listen(
+    "#arquivosPublicacao",
+    "change",
+    showFiles
+  );
 
-  // RESET MANUAL DO FORMULÁRIO
-
-  $("#formPublicacao").addEventListener("reset", () => {
+  // Limpeza ao resetar manualmente.
+  listen("#formPublicacao", "reset", () => {
     Promise.resolve().then(() => {
       cleanup();
 
       editingId = null;
 
-      $("#listaArquivos").innerHTML = "";
-      $("#previewAnexos").innerHTML = "";
+      if ($("#listaArquivos")) {
+        $("#listaArquivos").innerHTML = "";
+      }
+
+      if ($("#previewAnexos")) {
+        $("#previewAnexos").innerHTML = "";
+      }
 
       clearErr("#erroPublicacao");
 
@@ -1150,73 +1581,67 @@
   // PUBLICAR
   // =========================================
 
-  $("#formPublicacao").addEventListener(
-    "submit",
-    async event => {
-      event.preventDefault();
+  listen("#formPublicacao", "submit", async event => {
+    event.preventDefault();
 
-      clearErr("#erroPublicacao");
+    clearErr("#erroPublicacao");
 
-      const user = window.schoollinkAuth.currentUser;
-
-      if (
-        !ready() ||
-        !user ||
-        authorizedUid !== user.uid
-      ) {
-        err(
-          "#erroPublicacao",
-          "Entre com uma conta autorizada do Firebase antes de publicar."
-        );
-
-        return;
-      }
-
-      const submitButton = $(
-        'button[type="submit"]',
-        $("#formPublicacao")
+    try {
+      await getAuthorizedUser();
+    } catch (error) {
+      err(
+        "#erroPublicacao",
+        error.message
       );
 
+      return;
+    }
+
+    const submitButton = $(
+      'button[type="submit"]',
+      $("#formPublicacao")
+    );
+
+    if (submitButton) {
+      submitButton.disabled = true;
+      submitButton.textContent = "Publicando...";
+    }
+
+    try {
+      await savePost();
+
+      resetForm();
+
+      await refreshPosts();
+
+      showTab("gerenciar");
+
+    } catch (error) {
+      console.error(
+        "[SchoolLink] Erro ao publicar:",
+        error
+      );
+
+      err(
+        "#erroPublicacao",
+        error.message ||
+        "Não foi possível salvar a publicação."
+      );
+
+    } finally {
       if (submitButton) {
-        submitButton.disabled = true;
-        submitButton.textContent = "Publicando...";
-      }
-
-      try {
-        await savePost();
-
-        resetForm();
-
-        await refreshPosts();
-
-        showTab("gerenciar");
-
-      } catch (error) {
-        console.error(
-          "[SchoolLink] Erro ao publicar:",
-          error
-        );
-
-        err(
-          "#erroPublicacao",
-          error.message ||
-          "Não foi possível salvar. Verifique Firebase e permissões."
-        );
-
-      } finally {
-        if (submitButton) {
-          submitButton.disabled = false;
-          submitButton.textContent = "Publicar";
-        }
+        submitButton.disabled = false;
+        submitButton.textContent = "Publicar";
       }
     }
-  );
+  });
 
   // =========================================
   // FILTRO
   // =========================================
 
-  $("#filtroTipoDocente").addEventListener(
+  listen(
+    "#filtroTipoDocente",
     "change",
     renderPosts
   );
@@ -1225,181 +1650,230 @@
   // EDITAR E ARQUIVAR
   // =========================================
 
-  $("#listaPublicacoes").addEventListener(
-    "click",
-    async event => {
-      const user = window.schoollinkAuth.currentUser;
+  listen("#listaPublicacoes", "click", async event => {
+    try {
+      await getAuthorizedUser();
+    } catch {
+      return;
+    }
 
-      if (!user || authorizedUid !== user.uid) {
-        return;
+    const editButton =
+      event.target.closest("[data-edit]");
+
+    const archiveButton =
+      event.target.closest("[data-archive]");
+
+    const id = editButton?.dataset.edit;
+    const archiveId = archiveButton?.dataset.archive;
+
+    // ---------------------------------------
+    // EDITAR
+    // ---------------------------------------
+
+    if (id) {
+      const post = posts.find(item => item.id === id);
+
+      if (!post) return;
+
+      editingId = id;
+
+      $("#tipoPublicacao").value =
+        categoriaParaTela(post.categoria);
+
+      $("#tituloPublicacao").value =
+        post.titulo || "";
+
+      $("#descricaoPublicacao").value =
+        post.descricao || "";
+
+      $("#importanciaPublicacao").value =
+        post.importancia || "normal";
+
+      $("#dataPublicacao").value =
+        post.data_evento || "";
+
+      const destino = post.destino || "todos";
+
+      const radio = $(
+        `input[name="destinatario"][value="${destino}"]`
+      );
+
+      if (radio) {
+        radio.checked = true;
       }
 
-      const editButton = event.target.closest("[data-edit]");
-      const archiveButton = event.target.closest("[data-archive]");
+      const selectedTurmaIds = (
+        post.turmas || []
+      ).map(turma => turma.id);
 
-      const id = editButton?.dataset.edit;
-      const archive = archiveButton?.dataset.archive;
+      initializeTurmas(selectedTurmaIds);
 
-      // EDITAR
+      if ($("#blocoTurmas")) {
+        $("#blocoTurmas").hidden =
+          destino !== "turmas";
+      }
 
-      if (id) {
-        const post = posts.find(item => item.id === id);
-
-        if (!post) return;
-
-        editingId = id;
-
-        $("#tipoPublicacao").value = post.tipo || "Anúncio";
-        $("#tituloPublicacao").value = post.titulo || "";
-        $("#descricaoPublicacao").value = post.descricao || "";
-
-        $("#importanciaPublicacao").value =
-          post.importancia || "normal";
-
-        $("#dataPublicacao").value = post.data || "";
-
-        const destino = post.destino || "todos";
-
-        const radio = $(
-          `input[name="destinatario"][value="${destino}"]`
-        );
-
-        if (radio) {
-          radio.checked = true;
-        }
-
-        const turmasPost = Array.isArray(post.turmas)
-          ? post.turmas.map(normalizeTurmaId)
-          : [];
-
-        initializeTurmas(turmasPost);
-
-        const antigas = turmasPost.filter(id => !getTurma(id));
-
-        if (antigas.length) {
-          err(
-            "#erroPublicacao",
-            "Esta publicação contém IDs antigos de turmas (" +
-            antigas.join(", ") +
-            "). Selecione as turmas correspondentes no novo catálogo antes de salvar."
-          );
-        } else {
-          clearErr("#erroPublicacao");
-        }
-
+      if ($("#listaArquivos")) {
         $("#listaArquivos").innerHTML =
           (post.arquivos || []).map(file => `
             <div class="area-arquivos__item">
               <span>▧</span>
 
               <div>
-                <strong>${esc(file.nome)}</strong>
+                <strong>${esc(file.nome_original)}</strong>
                 <small>Arquivo já enviado</small>
               </div>
             </div>
           `).join("");
+      }
 
+      if ($("#previewAnexos")) {
         $("#previewAnexos").innerHTML = "";
-
-        $("#blocoTurmas").hidden = destino !== "turmas";
-
-        updatePreview();
-
-        showTab("publicar");
-
-        window.scrollTo({
-          top: 0,
-          behavior: "smooth"
-        });
       }
 
-      // ARQUIVAR
+      updatePreview();
 
-      if (archive && confirm("Arquivar esta publicação?")) {
-        try {
-          if (
-            !window.schoollinkAuth.currentUser ||
-            authorizedUid !== user.uid
-          ) {
-            throw Error("Você não tem autorização para arquivar.");
-          }
+      showTab("publicar");
 
-          await window.schoollinkDb
-            .collection("publicacoes")
-            .doc(archive)
-            .update({
-              status: "arquivado",
-
-              atualizadoEm:
-                firebase.firestore.FieldValue.serverTimestamp()
-            });
-
-          await refreshPosts();
-
-        } catch (error) {
-          alert(
-            "Não foi possível arquivar: " +
-            error.message
-          );
-        }
-      }
-    }
-  );
-
-  // =========================================
-  // RECUPERAÇÃO DE SESSÃO E AUTORIZAÇÃO
-  // =========================================
-
-  $("#painelDocente").hidden = true;
-  $("#btnSairDocente").hidden = true;
-
-  // Garante que não exista indicador antes da autorização.
-  removeServiceStatus();
-
-  createAccessDeniedPanel();
-
-  window.schoollinkAuth?.onAuthStateChanged(user => {
-    authCheckId++;
-
-    authorizedUid = null;
-    posts = [];
-
-    if (!user) {
-      // Remove o indicador quando não existe sessão.
-      removeServiceStatus();
-
-      clearAccessDenied();
-
-      $("#painelLoginDocente").hidden = false;
-      $("#painelDocente").hidden = true;
-      $("#btnSairDocente").hidden = true;
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+      });
 
       return;
     }
 
-    verifyDocenteAccess(user);
+    // ---------------------------------------
+    // ARQUIVAR
+    // ---------------------------------------
+
+    if (
+      archiveId &&
+      confirm("Arquivar esta publicação?")
+    ) {
+      try {
+        const user = await getAuthorizedUser();
+
+        const { error } = await supabase
+          .from("publicacoes")
+          .update({
+            status: "arquivado",
+            atualizado_em: new Date().toISOString()
+          })
+          .eq("id", archiveId);
+
+        if (error) {
+          throw error;
+        }
+
+        if (
+          !currentUser ||
+          authorizedUid !== user.id
+        ) {
+          throw Error("Sua sessão foi encerrada.");
+        }
+
+        await refreshPosts();
+
+      } catch (error) {
+        console.error(
+          "[SchoolLink] Erro ao arquivar:",
+          error
+        );
+
+        alert(
+          "Não foi possível arquivar: " +
+          error.message
+        );
+      }
+    }
   });
+
+  // =========================================
+  // SESSÃO SUPABASE
+  // =========================================
+
+  async function handleSession(session) {
+    const checkId = ++authCheckId;
+
+    if (!session?.user) {
+      showLogin();
+      return;
+    }
+
+    if (!supabaseReady()) {
+      denyAccess(
+        "Não foi possível inicializar o Supabase."
+      );
+
+      return;
+    }
+
+    // Evita que uma verificação antiga sobrescreva a nova.
+    if (checkId !== authCheckId) return;
+
+    await verifyDocenteAccess(session.user);
+  }
+
+  // =========================================
+  // INICIALIZAÇÃO
+  // =========================================
+
+  async function initialize() {
+    setHidden("#painelDocente", true);
+    setHidden("#btnSairDocente", true);
+
+    removeServiceStatus();
+    createAccessDeniedPanel();
+
+    if (!supabaseReady()) {
+      showLogin(
+        window.schoollinkSupabaseError ||
+        "Supabase não inicializado. Confira os arquivos de configuração."
+      );
+
+      const note = $(".area-form__nota");
+
+      if (note) {
+        note.textContent =
+          window.schoollinkSupabaseError ||
+          "Configure o Supabase para habilitar o acesso institucional.";
+      }
+
+      return;
+    }
+
+    // Observa login, renovação e encerramento da sessão.
+    supabase.auth.onAuthStateChange((_event, session) => {
+      // Deixa o callback de autenticação terminar antes
+      // de consultar as tabelas do banco.
+      Promise.resolve().then(() => handleSession(session));
+    });
+
+    const { data, error } = await supabase.auth.getSession();
+
+    if (error) {
+      console.error(
+        "[SchoolLink] Erro ao recuperar sessão:",
+        error
+      );
+
+      showLogin(
+        "Não foi possível recuperar sua sessão. Entre novamente."
+      );
+
+      return;
+    }
+
+    await handleSession(data.session);
+  }
 
   // =========================================
   // ESTADO INICIAL
   // =========================================
 
-  initializeTurmas();
-
-  // Não chamar updateServiceStatus() aqui.
-  // O indicador só aparece dentro de enter(user),
-  // depois da autorização do professor ou gestor.
-
-  if (!ready()) {
-    const note = $(".area-form__nota");
-
-    if (note) {
-      note.textContent =
-        window.schoollinkFirebaseError ||
-        "Configure o Firebase para habilitar o acesso institucional.";
-    }
-  }
-
   updatePreview();
+
+  initialize();
 
 })();
