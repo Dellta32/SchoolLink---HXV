@@ -1,28 +1,40 @@
+
 <!doctype html>
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#071936">
+
   <title>Área do Aluno | SchoolLink HXV</title>
+
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="css/areas-escolares.css">
- <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-<script src="firebase-config.js"></script>
-<script src="js/firebase-init.js"></script>
-<script src="js/turmas.js" defer></script>
-<script src="js/alunos.js" defer></script>
-<script src="js/voltar-topo.js" defer></script>
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="js/supabase-init.js"></script>
+
+  <!-- Scripts da página -->
+  <script src="js/turmas.js" defer></script>
+  <script src="js/alunos.js" defer></script>
+  <script src="js/voltar-topo.js" defer></script>
 </head>
+
 <body class="area-aluno-page">
+
   <header class="site-header">
     <nav class="site-nav" aria-label="Navegação principal">
+
       <a class="brand" href="index.html" aria-label="SchoolLink HXV - Início">
         <img src="imagens/logo.png" alt="" onerror="this.style.display='none'">
-        <span><strong>SchoolLink <em>HXV</em></strong><small>Portal educacional</small></span>
+        <span>
+          <strong>SchoolLink <em>HXV</em></strong>
+          <small>Portal educacional</small>
+        </span>
       </a>
+
       <div class="desktop-links">
         <a href="index.html" data-page="index.html">Início</a>
         <a href="sobre.html" data-page="sobre.html">Sobre</a>
@@ -30,261 +42,614 @@
         <a href="gestao.html" data-page="gestao.html">Gestão</a>
         <a href="horarios.html" data-page="horarios.html">Horários</a>
         <a href="cardapio.html" data-page="cardapio.html">Cardápio</a>
-        <a href="alunos.html"class="active"  data-page="alunos.html" >Área do aluno</a>
-        <a href="corpo-docente.html" aria-current="page">Corpo docente</a>
+        <a href="alunos.html" class="active" data-page="alunos.html">Área do aluno</a>
+        <a href="corpo-docente.html" data-page="corpo-docente.html">Corpo docente</a>
         <a href="guiaTreineiro.html" data-page="guiaTreineiro.html">ENEM</a>
       </div>
-      <button class="area-aluno__sair" id="btnSair" type="button" hidden>Sair</button>
+
+      <button
+        class="area-aluno__sair"
+        id="btnSair"
+        type="button"
+        hidden
+      >
+        Sair
+      </button>
+
     </nav>
   </header>
 
   <main class="area-aluno">
-  
-<section class="area-aluno__login" id="painelLogin">
 
-  <div class="area-aluno__login-copy">
-    <span class="area-eyebrow">SCHOOLLINK HXV · AMBIENTE DO ESTUDANTE</span>
+    <!-- LOGIN E CADASTRO -->
 
-    <h1>Seu espaço de aprendizagem.</h1>
+    <section class="area-aluno__login" id="painelLogin">
 
-    <p>
-      Acesse atividades, materiais, comunicados e compromissos
-      da sua turma em um só lugar.
-    </p>
+      <div class="area-aluno__login-copy">
 
-    <ul class="area-aluno__beneficios">
-      <li>Materiais organizados por disciplina</li>
-      <li>Atividades e prazos em destaque</li>
-      <li>Comunicados direcionados à sua turma</li>
-    </ul>
-  </div>
+        <span class="area-eyebrow">
+          SCHOOLLINK HXV · AMBIENTE DO ESTUDANTE
+        </span>
 
-  <!-- LOGIN -->
-  <form class="area-card area-aluno__form" id="formLoginAluno">
+        <h1>Seu espaço de aprendizagem.</h1>
 
-    <div class="area-card__icone" aria-hidden="true">↗</div>
+        <p>
+          Acesse atividades, materiais, comunicados e compromissos
+          da sua turma em um só lugar.
+        </p>
 
-    <h2>Entrar na área do aluno</h2>
-    <p>Utilize seu e-mail institucional para acessar o portal.</p>
+        <ul class="area-aluno__beneficios">
+          <li>Materiais organizados por disciplina</li>
+          <li>Atividades e prazos em destaque</li>
+          <li>Comunicados direcionados à sua turma</li>
+        </ul>
 
-    <label for="emailAluno">E-mail institucional</label>
-    <input
-      id="emailAluno"
-      name="email"
-      type="email"
-      autocomplete="username"
-      required
-      maxlength="120"
-      placeholder="seuemail@estudante.rn.gov.br"
-    >
-
-    <label for="senhaAluno">Senha</label>
-    <input
-      id="senhaAluno"
-      name="senha"
-      type="password"
-      autocomplete="current-password"
-      required
-      placeholder="Digite sua senha"
-    >
-
-    <p class="area-form__erro" id="erroLoginAluno" role="alert" hidden></p>
-
-    <button
-      class="area-button area-button--primary area-button--full"
-      type="submit"
-    >
-      Entrar
-    </button>
-
-    <p class="area-form__nota">
-      Ainda não possui uma conta?
-      <button
-        type="button"
-        class="area-link-button"
-        id="abrirCadastroAluno"
-      >
-        Criar conta
-      </button>
-    </p>
-
-  </form>
-
-  <!-- CADASTRO -->
-  <form
-    class="area-card area-aluno__form"
-    id="formCadastroAluno"
-    hidden
-  >
-
-    <div class="area-card__icone" aria-hidden="true">+</div>
-
-    <h2>Criar conta de estudante</h2>
-
-    <p>
-      Cadastre-se utilizando seu e-mail institucional.
-    </p>
-
-    <label for="nomeCadastroAluno">Nome completo</label>
-    <input
-      id="nomeCadastroAluno"
-      name="nome"
-      type="text"
-      autocomplete="name"
-      required
-      maxlength="120"
-      placeholder="Digite seu nome completo"
-    >
-
-    <label for="turmaCadastroAluno">Turma</label>
-    <select
-      id="turmaCadastroAluno"
-      name="turma"
-      required
-    >
-      <option value="" selected disabled>Carregando turmas...</option>
-    </select>
-
-    <label for="emailCadastroAluno">E-mail institucional</label>
-    <input
-      id="emailCadastroAluno"
-      name="email"
-      type="email"
-      autocomplete="email"
-      required
-      maxlength="120"
-      placeholder="seuemail@estudante.rn.gov.br"
-    >
-
-    <label for="senhaCadastroAluno">Criar senha</label>
-    <input
-      id="senhaCadastroAluno"
-      name="senha"
-      type="password"
-      autocomplete="new-password"
-      minlength="8"
-      required
-      placeholder="Mínimo de 8 caracteres"
-    >
-
-    <label for="confirmarSenhaAluno">Confirmar senha</label>
-    <input
-      id="confirmarSenhaAluno"
-      name="confirmarSenha"
-      type="password"
-      autocomplete="new-password"
-      minlength="8"
-      required
-      placeholder="Digite a senha novamente"
-    >
-
-    <p class="area-form__erro" id="erroCadastroAluno" role="alert" hidden></p>
-
-    <button
-      class="area-button area-button--primary area-button--full"
-      type="submit"
-    >
-      Criar minha conta
-    </button>
-
-    <p class="area-form__nota">
-      Já possui uma conta?
-      <button
-        type="button"
-        class="area-link-button"
-        id="voltarLoginAluno"
-      >
-        Voltar para o login
-      </button>
-    </p>
-
-  </form>
-
-</section>
-
-
-    <section class="area-aluno__app" id="painelAluno" hidden>
-      <div class="area-aluno__topo">
-        <div>
-          <span class="area-eyebrow">PAINEL DO ESTUDANTE</span>
-          <h1>Olá, <span id="nomeAluno">estudante</span>!</h1>
-          <p id="turmaAluno">Acompanhe as novidades da sua turma.</p>
-        </div>
-        <div class="area-aluno__data"><span>HOJE</span><strong id="dataHoje">—</strong></div>
       </div>
 
-      <nav class="area-tabs" aria-label="Seções da área do aluno" role="tablist">
-        <button type="button" class="is-active" data-secao="visao-geral" role="tab" aria-selected="true">Visão geral</button>
-        <button type="button" data-secao="tarefas" role="tab" aria-selected="false">Minhas tarefas</button>
-        <button type="button" data-secao="calendario" role="tab" aria-selected="false">Calendário</button>
-        <button type="button" data-secao="conteudos" role="tab" aria-selected="false">Conteúdos</button>
-        <button type="button" data-secao="comunicados" role="tab" aria-selected="false">Comunicados</button>
+      <!-- LOGIN -->
+
+      <form class="area-card area-aluno__form" id="formLoginAluno">
+
+        <div class="area-card__icone" aria-hidden="true">↗</div>
+
+        <h2>Entrar na área do aluno</h2>
+
+        <p>
+          Utilize seu e-mail institucional para acessar o portal.
+        </p>
+
+        <label for="emailAluno">E-mail institucional</label>
+
+        <input
+          id="emailAluno"
+          name="email"
+          type="email"
+          autocomplete="username"
+          required
+          maxlength="120"
+          placeholder="202430476759@estudante.rn.gov.br"
+        >
+
+        <label for="senhaAluno">Senha</label>
+
+        <input
+          id="senhaAluno"
+          name="senha"
+          type="password"
+          autocomplete="current-password"
+          required
+          placeholder="Digite sua senha"
+        >
+
+        <p
+          class="area-form__erro"
+          id="erroLoginAluno"
+          role="alert"
+          hidden
+        ></p>
+
+        <button
+          class="area-button area-button--primary area-button--full"
+          type="submit"
+        >
+          Entrar
+        </button>
+
+        <p class="area-form__nota">
+          Ainda não possui uma conta?
+
+          <button
+            type="button"
+            class="area-link-button"
+            id="abrirCadastroAluno"
+          >
+            Criar conta
+          </button>
+        </p>
+
+      </form>
+
+      <!-- CADASTRO -->
+
+      <form
+        class="area-card area-aluno__form"
+        id="formCadastroAluno"
+        hidden
+      >
+
+        <div class="area-card__icone" aria-hidden="true">+</div>
+
+        <h2>Criar conta de estudante</h2>
+
+        <p>
+          Cadastre-se utilizando seu e-mail institucional.
+        </p>
+
+        <label for="nomeCadastroAluno">Nome completo</label>
+
+        <input
+          id="nomeCadastroAluno"
+          name="nome"
+          type="text"
+          autocomplete="name"
+          required
+          maxlength="120"
+          placeholder="Digite seu nome completo"
+        >
+
+        <label for="turmaCadastroAluno">Turma</label>
+
+        <select
+          id="turmaCadastroAluno"
+          name="turma"
+          required
+        >
+          <option value="" selected disabled>
+            Carregando turmas...
+          </option>
+        </select>
+
+        <label for="emailCadastroAluno">E-mail institucional</label>
+
+        <input
+          id="emailCadastroAluno"
+          name="email"
+          type="email"
+          autocomplete="email"
+          required
+          maxlength="120"
+          placeholder="202430476759@estudante.rn.gov.br"
+        >
+
+        <label for="senhaCadastroAluno">Criar senha</label>
+
+        <input
+          id="senhaCadastroAluno"
+          name="senha"
+          type="password"
+          autocomplete="new-password"
+          minlength="8"
+          required
+          placeholder="Mínimo de 8 caracteres"
+        >
+
+        <label for="confirmarSenhaAluno">Confirmar senha</label>
+
+        <input
+          id="confirmarSenhaAluno"
+          name="confirmarSenha"
+          type="password"
+          autocomplete="new-password"
+          minlength="8"
+          required
+          placeholder="Digite a senha novamente"
+        >
+
+        <p
+          class="area-form__erro"
+          id="erroCadastroAluno"
+          role="alert"
+          hidden
+        ></p>
+
+        <button
+          class="area-button area-button--primary area-button--full"
+          type="submit"
+        >
+          Criar minha conta
+        </button>
+
+        <p class="area-form__nota">
+          Já possui uma conta?
+
+          <button
+            type="button"
+            class="area-link-button"
+            id="voltarLoginAluno"
+          >
+            Voltar para o login
+          </button>
+        </p>
+
+      </form>
+
+    </section>
+
+    <!-- PAINEL DO ALUNO -->
+
+    <section class="area-aluno__app" id="painelAluno" hidden>
+
+      <div class="area-aluno__topo">
+
+        <div>
+          <span class="area-eyebrow">PAINEL DO ESTUDANTE</span>
+
+          <h1>
+            Olá, <span id="nomeAluno">estudante</span>!
+          </h1>
+
+          <p id="turmaAluno">
+            Acompanhe as novidades da sua turma.
+          </p>
+        </div>
+
+        <div class="area-aluno__data">
+          <span>HOJE</span>
+          <strong id="dataHoje">—</strong>
+        </div>
+
+      </div>
+
+      <!-- NAVEGAÇÃO INTERNA -->
+
+      <nav
+        class="area-tabs"
+        aria-label="Seções da área do aluno"
+        role="tablist"
+      >
+
+        <button
+          type="button"
+          class="is-active"
+          data-secao="visao-geral"
+          role="tab"
+          aria-selected="true"
+        >
+          Visão geral
+        </button>
+
+        <button
+          type="button"
+          data-secao="tarefas"
+          role="tab"
+          aria-selected="false"
+        >
+          Minhas tarefas
+        </button>
+
+        <button
+          type="button"
+          data-secao="calendario"
+          role="tab"
+          aria-selected="false"
+        >
+          Calendário
+        </button>
+
+        <button
+          type="button"
+          data-secao="conteudos"
+          role="tab"
+          aria-selected="false"
+        >
+          Conteúdos
+        </button>
+
+        <button
+          type="button"
+          data-secao="comunicados"
+          role="tab"
+          aria-selected="false"
+        >
+          Comunicados
+        </button>
+
       </nav>
 
-      <section class="area-secao is-visible" id="secao-visao-geral" data-painel="visao-geral">
+      <!-- VISÃO GERAL -->
+
+      <section
+        class="area-secao is-visible"
+        id="secao-visao-geral"
+        data-painel="visao-geral"
+      >
+
         <div class="area-stats">
-          <article class="area-stat"><span class="area-stat__icone">✓</span><div><small>Tarefas pendentes</small><strong id="totalPendentes">0</strong></div></article>
-          <article class="area-stat"><span class="area-stat__icone area-stat__icone--vermelho">!</span><div><small>Atividades próximas</small><strong id="totalProximas">0</strong></div></article>
-          <article class="area-stat"><span class="area-stat__icone area-stat__icone--azul">▤</span><div><small>Novos comunicados</small><strong id="totalComunicados">0</strong></div></article>
+
+          <article class="area-stat">
+            <span class="area-stat__icone">✓</span>
+            <div>
+              <small>Tarefas pendentes</small>
+              <strong id="totalPendentes">0</strong>
+            </div>
+          </article>
+
+          <article class="area-stat">
+            <span class="area-stat__icone area-stat__icone--vermelho">!</span>
+            <div>
+              <small>Atividades próximas</small>
+              <strong id="totalProximas">0</strong>
+            </div>
+          </article>
+
+          <article class="area-stat">
+            <span class="area-stat__icone area-stat__icone--azul">▤</span>
+            <div>
+              <small>Novos comunicados</small>
+              <strong id="totalComunicados">0</strong>
+            </div>
+          </article>
+
         </div>
+
         <div class="area-duas-colunas">
+
           <section class="area-card">
-            <div class="area-card__cabecalho"><div><span class="area-eyebrow">ACOMPANHAMENTO</span><h2>Próximas atividades</h2></div><button class="area-link-button" data-ir="tarefas" type="button">Ver todas →</button></div>
+
+            <div class="area-card__cabecalho">
+              <div>
+                <span class="area-eyebrow">ACOMPANHAMENTO</span>
+                <h2>Próximas atividades</h2>
+              </div>
+
+              <button
+                class="area-link-button"
+                data-ir="tarefas"
+                type="button"
+              >
+                Ver todas →
+              </button>
+            </div>
+
             <div class="area-lista" id="listaProximas"></div>
+
           </section>
+
           <section class="area-card">
-            <div class="area-card__cabecalho"><div><span class="area-eyebrow">MURAL DA TURMA</span><h2>Comunicados recentes</h2></div><button class="area-link-button" data-ir="comunicados" type="button">Ver mural →</button></div>
+
+            <div class="area-card__cabecalho">
+              <div>
+                <span class="area-eyebrow">MURAL DA TURMA</span>
+                <h2>Comunicados recentes</h2>
+              </div>
+
+              <button
+                class="area-link-button"
+                data-ir="comunicados"
+                type="button"
+              >
+                Ver mural →
+              </button>
+            </div>
+
             <div class="area-lista" id="listaRecentes"></div>
+
           </section>
+
         </div>
+
       </section>
 
-      <section class="area-secao" id="secao-tarefas" data-painel="tarefas">
-        <div class="area-secao__titulo"><div><span class="area-eyebrow">ORGANIZAÇÃO PESSOAL</span><h2>Minhas tarefas</h2><p>Crie lembretes pessoais e acompanhe as atividades escolares.</p></div></div>
+      <!-- TAREFAS -->
+
+      <section
+        class="area-secao"
+        id="secao-tarefas"
+        data-painel="tarefas"
+      >
+
+        <div class="area-secao__titulo">
+          <div>
+            <span class="area-eyebrow">ORGANIZAÇÃO PESSOAL</span>
+            <h2>Minhas tarefas</h2>
+            <p>
+              Crie lembretes pessoais e acompanhe as atividades escolares.
+            </p>
+          </div>
+        </div>
+
         <form class="area-card area-tarefa-form" id="formNovaTarefa">
-          <label for="tituloTarefa">Nova tarefa ou lembrete</label>
-          <div class="area-tarefa-form__linha"><input id="tituloTarefa" required maxlength="120" placeholder="Ex.: revisar conteúdo de Matemática"><input id="prazoTarefa" type="date" aria-label="Prazo da tarefa"><button class="area-button area-button--primary" type="submit">Adicionar</button></div>
+
+          <label for="tituloTarefa">
+            Nova tarefa ou lembrete
+          </label>
+
+          <div class="area-tarefa-form__linha">
+
+            <input
+              id="tituloTarefa"
+              required
+              maxlength="120"
+              placeholder="Ex.: revisar conteúdo de Matemática"
+            >
+
+            <input
+              id="prazoTarefa"
+              type="date"
+              aria-label="Prazo da tarefa"
+            >
+
+            <button
+              class="area-button area-button--primary"
+              type="submit"
+            >
+              Adicionar
+            </button>
+
+          </div>
+
         </form>
-        <div class="area-card"><div class="area-lista" id="listaTarefas"></div></div>
+
+        <div class="area-card">
+          <div class="area-lista" id="listaTarefas"></div>
+        </div>
+
       </section>
 
-      <section class="area-secao" id="secao-calendario" data-painel="calendario">
-        <div class="area-secao__titulo"><div><span class="area-eyebrow">DATAS IMPORTANTES</span><h2>Calendário escolar</h2><p>Atividades com prazo e eventos publicados pela escola.</p></div></div>
-        <div class="area-card"><div class="area-lista" id="listaCalendario"></div></div>
+      <!-- CALENDÁRIO -->
+
+      <section
+        class="area-secao"
+        id="secao-calendario"
+        data-painel="calendario"
+      >
+
+        <div class="area-secao__titulo">
+          <div>
+            <span class="area-eyebrow">DATAS IMPORTANTES</span>
+            <h2>Calendário escolar</h2>
+            <p>
+              Atividades com prazo e eventos publicados pela escola.
+            </p>
+          </div>
+        </div>
+
+        <div class="area-card">
+          <div class="area-lista" id="listaCalendario"></div>
+        </div>
+
       </section>
 
-      <section class="area-secao" id="secao-conteudos" data-painel="conteudos">
-        <div class="area-secao__titulo"><div><span class="area-eyebrow">MATERIAIS DE ESTUDO</span><h2>Conteúdos por disciplina</h2><p>Consulte os materiais liberados para sua turma.</p></div></div>
-        <div class="area-filtros"><label for="filtroDisciplina">Filtrar disciplina</label><select id="filtroDisciplina"><option value="todas">Todas as disciplinas</option></select></div>
+      <!-- CONTEÚDOS -->
+
+      <section
+        class="area-secao"
+        id="secao-conteudos"
+        data-painel="conteudos"
+      >
+
+        <div class="area-secao__titulo">
+          <div>
+            <span class="area-eyebrow">MATERIAIS DE ESTUDO</span>
+            <h2>Conteúdos por disciplina</h2>
+            <p>
+              Consulte os materiais liberados para sua turma.
+            </p>
+          </div>
+        </div>
+
+        <div class="area-filtros">
+
+          <label for="filtroDisciplina">
+            Filtrar disciplina
+          </label>
+
+          <select id="filtroDisciplina">
+            <option value="todas">Todas as disciplinas</option>
+          </select>
+
+        </div>
+
         <div class="area-conteudos" id="listaConteudos"></div>
+
       </section>
 
-      <section class="area-secao" id="secao-comunicados" data-painel="comunicados">
-        <div class="area-secao__titulo"><div><span class="area-eyebrow">MURAL ESCOLAR</span><h2>Comunicados</h2><p>Avisos gerais e informações direcionadas à sua turma.</p></div></div>
+      <!-- COMUNICADOS -->
+
+      <section
+        class="area-secao"
+        id="secao-comunicados"
+        data-painel="comunicados"
+      >
+
+        <div class="area-secao__titulo">
+          <div>
+            <span class="area-eyebrow">MURAL ESCOLAR</span>
+            <h2>Comunicados</h2>
+            <p>
+              Avisos gerais e informações direcionadas à sua turma.
+            </p>
+          </div>
+        </div>
+
         <div class="area-lista area-card" id="listaComunicados"></div>
+
       </section>
-      <p class="area-aluno__aviso">As publicações são carregadas do Firestore. As tarefas pessoais continuam salvas apenas neste navegador. O login por matrícula e código depende de uma Cloud Function segura.</p>
+
+      <p class="area-aluno__aviso">
+        As publicações e os materiais são carregados pelo Supabase.
+        Suas tarefas pessoais continuam salvas apenas neste navegador.
+        O acesso utiliza seu e-mail institucional e sua senha.
+      </p>
+
     </section>
+
   </main>
 
+  <!-- NAVEGAÇÃO MOBILE -->
+
   <nav class="mobile-nav" aria-label="Navegação mobile">
-    <a href="index.html" data-page="index.html"><span>⌂</span><small>Início</small></a>
-    <a href="sobre.html" data-page="sobre.html"><span>ⓘ</span><small>Sobre</small></a>
-    <a href="eventos.html" data-page="eventos.html"><span>▣</span><small>Eventos</small></a>
-    <a href="gestao.html" data-page="gestao.html"><span>♙</span><small>Gestão</small></a>
-    <a href="horarios.html" data-page="horarios.html"><span>◷</span><small>Horários</small></a>
-    <a href="alunos.html" class="active" aria-current="page"><span aria-hidden="true">🎓</span><small>Aluno</small></a>
-    <a href="corpo-docente.html"><span aria-hidden="true">🧑‍🏫</span><small>Docentes</small></a> 
-    <a href="guiaTreineiro.html" data-page="guiaTreineiro.html">🕮<span> <small>ENEM</small></span></a>
+
+    <a href="index.html" data-page="index.html">
+      <span>⌂</span>
+      <small>Início</small>
+    </a>
+
+    <a href="sobre.html" data-page="sobre.html">
+      <span>ⓘ</span>
+      <small>Sobre</small>
+    </a>
+
+    <a href="eventos.html" data-page="eventos.html">
+      <span>▣</span>
+      <small>Eventos</small>
+    </a>
+
+    <a href="gestao.html" data-page="gestao.html">
+      <span>♙</span>
+      <small>Gestão</small>
+    </a>
+
+    <a href="horarios.html" data-page="horarios.html">
+      <span>◷</span>
+      <small>Horários</small>
+    </a>
+
+    <a href="alunos.html" class="active" aria-current="page">
+      <span aria-hidden="true">🎓</span>
+      <small>Aluno</small>
+    </a>
+
+    <a href="corpo-docente.html">
+      <span aria-hidden="true">🧑‍🏫</span>
+      <small>Docentes</small>
+    </a>
+
+    <a href="guiaTreineiro.html" data-page="guiaTreineiro.html">
+      <span aria-hidden="true">🕮</span>
+      <small>ENEM</small>
+    </a>
+
   </nav>
-  <footer class="site-footer"><div class="footer-brand"><img
-          src="imagens/logo.png" alt><div><strong>SchoolLink
-            HXV</strong><small>CEEP Hélio Xavier de
-            Vasconcelos</small></div></div><div><strong>Links úteis</strong><a
-          href="sobre.html">Sobre o portal</a><a href="eventos.html">Eventos
-          escolares</a><a href="https://www.instagram.com/ceephelioxavier/"
-          target="_blank" rel="noreferrer">Instagram da
-          escola</a></div><p>Educação, tecnologia e comunidade escolar. © 2026
-        CEEP HXV.</p></footer>
+
+  <!-- RODAPÉ -->
+
+  <footer class="site-footer">
+
+    <div class="footer-brand">
+
+      <img src="imagens/logo.png" alt="">
+
+      <div>
+        <strong>SchoolLink HXV</strong>
+        <small>CEEP Hélio Xavier de Vasconcelos</small>
+      </div>
+
+    </div>
+
+    <div>
+
+      <strong>Links úteis</strong>
+
+      <a href="sobre.html">Sobre o portal</a>
+
+      <a href="eventos.html">Eventos escolares</a>
+
+      <a
+        href="https://www.instagram.com/ceephelioxavier/"
+        target="_blank"
+        rel="noreferrer"
+      >
+        Instagram da escola
+      </a>
+
+    </div>
+
+    <p>
+      Educação, tecnologia e comunidade escolar. © 2026 CEEP HXV.
+    </p>
+
+  </footer>
+
 </body>
 </html>
