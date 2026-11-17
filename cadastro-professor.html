@@ -1,0 +1,233 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <meta name="robots" content="noindex, nofollow">
+
+  <title>Cadastro de Professores | SchoolLink HXV</title>
+
+  <link rel="stylesheet" href="cadastro-professor.css">
+
+  <!-- Firebase Compat -->
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+
+  <!-- Configuração existente do SchoolLink -->
+  <script src="firebase-config.js"></script>
+  <script src="firebase-init.js"></script>
+
+  <script src="cadastro-professor.js" defer></script>
+</head>
+
+<body>
+
+  <main class="container">
+
+    <header class="header">
+      <div class="logo">SchoolLink <span>HXV</span></div>
+      <span class="restricted">Área restrita</span>
+    </header>
+
+    <section id="loading" class="panel">
+      <div class="loader"></div>
+      <p>Verificando autorização...</p>
+    </section>
+
+    <section id="accessDenied" class="panel hidden">
+      <div class="icon">🔒</div>
+      <h1>Acesso não autorizado</h1>
+      <p id="accessMessage">
+        Você não possui permissão para acessar esta página.
+      </p>
+      <button id="backButton" class="button secondary">
+        Voltar
+      </button>
+    </section>
+
+    <section id="securitySection" class="panel hidden">
+
+      <div class="heading">
+        <span class="eyebrow">ADMINISTRAÇÃO</span>
+        <h1>Cadastro de professores</h1>
+        <p>Informe a senha de segurança para continuar.</p>
+      </div>
+
+      <form id="securityForm">
+
+        <label for="securityPassword">
+          Senha de segurança
+        </label>
+
+        <input
+          type="password"
+          id="securityPassword"
+          placeholder="Digite a senha de segurança"
+          autocomplete="current-password"
+          required
+        >
+
+        <button type="submit" class="button">
+          Desbloquear acesso
+        </button>
+
+      </form>
+
+      <p id="securityMessage" class="message"></p>
+
+    </section>
+
+    <section id="adminSection" class="panel hidden">
+
+      <div class="heading">
+        <span class="eyebrow">PAINEL ADMINISTRATIVO</span>
+        <h1>Gestão de professores</h1>
+        <p>Gerencie os acessos dos professores do CEEP HXV.</p>
+      </div>
+
+      <nav class="tabs">
+        <button class="tab active" data-tab="register">
+          Novo professor
+        </button>
+
+        <button class="tab" data-tab="password">
+          Segurança
+        </button>
+      </nav>
+
+      <!-- CADASTRO -->
+      <section id="registerTab" class="tab-content">
+
+        <h2>Novo cadastro</h2>
+
+        <p class="description">
+          Os dados informados serão registrados no Firebase.
+        </p>
+
+        <form id="registerForm">
+
+          <label for="teacherName">Nome completo</label>
+
+          <input
+            type="text"
+            id="teacherName"
+            placeholder="Nome do professor"
+            maxlength="120"
+            autocomplete="name"
+            required
+          >
+
+          <label for="teacherEmail">E-mail institucional</label>
+
+          <input
+            type="email"
+            id="teacherEmail"
+            placeholder="professor@..."
+            maxlength="254"
+            autocomplete="email"
+            required
+          >
+
+          <label for="teacherPassword">Senha inicial</label>
+
+          <input
+            type="password"
+            id="teacherPassword"
+            placeholder="Mínimo de 8 caracteres"
+            minlength="8"
+            maxlength="128"
+            autocomplete="new-password"
+            required
+          >
+
+          <label for="teacherPasswordConfirm">
+            Confirmar senha inicial
+          </label>
+
+          <input
+            type="password"
+            id="teacherPasswordConfirm"
+            placeholder="Digite novamente a senha"
+            required
+          >
+
+          <button type="submit" class="button">
+            Cadastrar professor
+          </button>
+
+        </form>
+
+        <p id="registerMessage" class="message"></p>
+
+      </section>
+
+      <!-- ALTERAÇÃO DE SENHA -->
+      <section id="passwordTab" class="tab-content hidden">
+
+        <h2>Senha de segurança</h2>
+
+        <p class="description">
+          Altere a senha utilizada para liberar o cadastro de professores.
+        </p>
+
+        <form id="changePasswordForm">
+
+          <label for="currentPassword">
+            Senha atual
+          </label>
+
+          <input
+            type="password"
+            id="currentPassword"
+            autocomplete="current-password"
+            required
+          >
+
+          <label for="newPassword">
+            Nova senha
+          </label>
+
+          <input
+            type="password"
+            id="newPassword"
+            minlength="12"
+            maxlength="128"
+            autocomplete="new-password"
+            placeholder="Mínimo de 12 caracteres"
+            required
+          >
+
+          <label for="confirmNewPassword">
+            Confirmar nova senha
+          </label>
+
+          <input
+            type="password"
+            id="confirmNewPassword"
+            autocomplete="new-password"
+            required
+          >
+
+          <button type="submit" class="button">
+            Alterar senha
+          </button>
+
+        </form>
+
+        <p id="passwordMessage" class="message"></p>
+
+      </section>
+
+      <button id="logoutButton" class="logout">
+        Sair da área restrita
+      </button>
+
+    </section>
+
+  </main>
+
+</body>
+</html>
