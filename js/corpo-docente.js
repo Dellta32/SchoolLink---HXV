@@ -1,5 +1,5 @@
 
-/* SchoolLink HXV — Corpo docente
+/* SchoolLink HXV — Corpo docente v1
  *
  * Autenticação: Supabase Auth
  * Perfis: Supabase Database
