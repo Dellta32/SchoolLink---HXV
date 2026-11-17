@@ -1,5 +1,5 @@
 
-/* SchoolLink HXV — Área do aluno
+/* SchoolLink HXV — Área do aluno v1.0
  * Supabase Auth + PostgreSQL + Storage.
  * Tarefas pessoais: localStorage por UID.
  */
