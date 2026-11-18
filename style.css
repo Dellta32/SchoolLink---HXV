@@ -37,6 +37,8 @@ html {
 }
 
 body {
+  display: flex;
+  flex-direction: column;
   font-family: 'DM Sans', Arial, sans-serif;
   background: var(--paper);
   color: var(--ink);
@@ -211,6 +213,7 @@ header.site-header {
 }
 
 .site-footer {
+  margin-top: auto;
   background: var(--navy);
   color: white;
   padding: 32px max(24px, calc((100% - 1160px)/2));
@@ -643,6 +646,7 @@ body:not(.home-page) main>h1 {
 
 .sobre-titulo p {
   font-size: 15px;
+  text-align: justify;
 }
 
 .sobre-slogan {
@@ -656,6 +660,7 @@ body:not(.home-page) main>h1 {
 }
 
 .sobre-content {
+  text-align: justify;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
